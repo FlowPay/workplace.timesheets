@@ -1,0 +1,11 @@
+{
+  "files.watcherExclude": {
+    "**/.build/**": true,
+    "**/.git/**": true
+  },
+  "search.exclude": {
+    // maybe add:  *.md,*.html,*.json,*.yaml,*.yml
+    "**/.build/**": true,
+    "**/*.html": true,
+  }
+}

@@ -1,0 +1,282 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "FlowPay API",
+        "version": "2.0.0-beta",
+        "description": {
+            "$ref": "description.md"
+        },
+        "termsOfService": "https://developer.flowpay.it/tos",
+        "license": {
+            "name": "FlowPay SRL",
+            "url": "https://developer.flowpay.it/tos"
+        },
+        "x-logo": {
+            "url": "https://images.flowpay.it/logo",
+            "altText": "FlowPay"
+        },
+        "contact": {
+            "name": "API Support",
+            "url": "https://developer.flowpay.it",
+            "email": "api-support@flowpay.it"
+        },
+        "x-json-schema-faker": {
+            "locale": "it-IT",
+            "omitNulls": true,
+            "fillProperties": true,
+            "reuseProperties": true
+        }
+    },
+    "servers": [
+        {
+            "url": "https://mock.flowpay.it/v2/services/payments",
+            "description": "Mock server"
+        },
+        {
+            "url": "https://staging.flowpay.it/v2/services/payments",
+            "description": "Staging server"
+        },
+        {
+            "url": "https://sandbox.{customerID}.flowpay.it/v2/services/payments",
+            "description": "Customer-assigned sandbox server",
+            "variables": {
+                "customerID": {
+                    "default": "00000000-00000000-00000000-00000000",
+                    "description": "Unique customer identifier assigned after contract signature"
+                }
+            }
+        },
+        {
+            "url": "http://localhost:5555",
+            "description": "Debug"
+        }
+    ],
+    "components": {
+        "schemas": {
+            "Example": {
+                "type": "object",
+                "properties": {
+                    "stringExample": {
+                        "type": "string",
+                        "description": "A string with templating purpose"
+                    },
+                    "optionalIntegerExample": {
+                        "type": "integer",
+                        "description": "An integer value wich could be null"
+                    },
+                    "enumExample": {
+                        "type": "string",
+                        "enum": [
+                            "xyz",
+                            "abcd"
+                        ]
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "iso-8601",
+                        "description": "Date of example creation"
+                    }
+                },
+                "required": [
+                    "stringExample",
+                    "enumExample",
+                    "createdAt"
+                ]
+            },
+            "PaginatedResult": {
+                "type": "object",
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "description": "Current page number"
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Number of items per page"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "description": "Total number of items"
+                    },
+                    "items": {
+                        "type": "array",
+                        "description": "List of items",
+                        "items": {}
+                    }
+                }
+            }
+        },
+        "responses": {
+            "BadRequest": {
+                "description": "Client has provided invalid data"
+            },
+            "Unauthorized": {
+                "description": "Client has not provided valid credentials to access the requested resource"
+            },
+            "Forbidden": {
+                "description": "Client is not authorized to access the requested resource"
+            },
+            "NotFound": {
+                "description": "The requested resource was not found"
+            },
+            "Conflict": {
+                "description": "The requested resource is in conflict with the current state of the server"
+            },
+            "InternalServerError": {
+                "description": "Server encountered an unexpected condition that prevented it from fulfilling the request"
+            }
+        }
+    },
+    "webhooks": {
+        "examples/new": {
+            "post": {
+                "summary": "New example created",
+                "description": "Notify the creation of a new `Example` ",
+                "operationId": "example/new",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "exampleID": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    }
+                                },
+                                "required": [
+                                    "exampleID"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "security": [],
+                "tags": [
+                    "Events"
+                ]
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Example",
+            "description": "Fake entity useful to create this template"
+        }
+    ],
+    "paths": {
+        "/examples": {
+            "get": {
+                "summary": "List invoices",
+                "description": "Retrieve invoices list according to the specified filters",
+                "operationId": "getInvoices",
+                "parameters": [
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "description": "Start date of the examples to retrieve. If not specified, the default value is the first day of the current month",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "iso8601"
+                        },
+                        "x-faker": "date.past"
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "description": "End date of the invoices to retrieve. If not specified, the default value is the current date",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "iso8601"
+                        },
+                        "x-faker": "date.future"
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Invoice status",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "draft",
+                                "sent",
+                                "paid",
+                                "overdue",
+                                "canceled"
+                            ]
+                        },
+                        "x-faker": "random.arrayElement"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "x-faker": "random.number"
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "description": "Page size",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "x-faker": "random.number"
+                    }
+                ],
+                "security": [],
+                "responses": {
+                    "200": {
+                        "description": "Examples retrieved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/PaginatedResult"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Example"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalServerError"
+                    }
+                },
+                "tags": [
+                    "Examples"
+                ]
+            }
+        }
+    }
+}
