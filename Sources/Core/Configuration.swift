@@ -41,8 +41,16 @@ extension Application {
 		public let sqlitePath: String?
                 /// Optional connection string for request logging database
                 public let requestsMongoString: String?
-                /// Optional base URL for the external file service
-                public let fileServiceURL: String?
+                /// Optional base URL for Microsoft Graph API
+                public let msGraphURL: String?
+                /// Optional tenant identifier for Microsoft Graph OAuth
+                public let msGraphTenantId: String?
+                /// Optional client identifier for Microsoft Graph OAuth
+                public let msGraphClientId: String?
+                /// Optional client secret for Microsoft Graph OAuth
+                public let msGraphClientSecret: String?
+                /// Comma separated list of team identifiers to sync
+                public let msGraphTeamIDs: [String]
 
 		/// Initialize configuration by reading environment values
 		init() {
@@ -62,10 +70,34 @@ extension Application {
                                 } else {
                                         self.requestsMongoString = nil
                                 }
-                                if let fileURL: String = try? Environment.process.retrieve("FILE_SERVICE_URL"), !fileURL.isEmpty {
-                                        self.fileServiceURL = fileURL
+                                if let graphURL: String = try? Environment.process.retrieve("MS_GRAPH_URL"), !graphURL.isEmpty {
+                                        self.msGraphURL = graphURL
                                 } else {
-                                        self.fileServiceURL = nil
+                                        self.msGraphURL = nil
+                                }
+
+                                if let tenant: String = try? Environment.process.retrieve("MS_GRAPH_TENANT_ID"), !tenant.isEmpty {
+                                        self.msGraphTenantId = tenant
+                                } else {
+                                        self.msGraphTenantId = nil
+                                }
+
+                                if let clientId: String = try? Environment.process.retrieve("MS_GRAPH_CLIENT_ID"), !clientId.isEmpty {
+                                        self.msGraphClientId = clientId
+                                } else {
+                                        self.msGraphClientId = nil
+                                }
+
+                                if let secret: String = try? Environment.process.retrieve("MS_GRAPH_CLIENT_SECRET"), !secret.isEmpty {
+                                        self.msGraphClientSecret = secret
+                                } else {
+                                        self.msGraphClientSecret = nil
+                                }
+
+                                if let teams: String = try? Environment.process.retrieve("MS_GRAPH_TEAM_IDS"), !teams.isEmpty {
+                                        self.msGraphTeamIDs = teams.split(separator: ",").map { String($0) }
+                                } else {
+                                        self.msGraphTeamIDs = []
                                 }
 
 			} catch let error {

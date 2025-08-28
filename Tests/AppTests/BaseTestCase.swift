@@ -34,27 +34,30 @@ class BaseTestCase: XCTestCase {
 		if fileManager.fileExists(atPath: dbPath) {
 			try? fileManager.removeItem(atPath: dbPath)
 		}
-		setenv("SQLITE_PATH", dbPath, 1)
-		app = try await Application.make(.testing)
-		try configure(app)
-		try await app.autoMigrate()
-
-		// Register default aml.file client returning example spreadsheet to avoid fatal errors in tests
-		let examples = URL(fileURLWithPath: #filePath)
-			.deletingLastPathComponent()
-			.appendingPathComponent("examples")
-		let fileURL = examples.appendingPathComponent("TimeSheetExport_2025-7-1_TO_2025-8-7_TEAM_7331a68b-6a8b-475f-9286-b78c42c78543_dd159988a3ba498991157759e26f5672.xlsx")
-		app.fileAdapter = TestAmlFileClient(fileURL: fileURL)
+                setenv("SQLITE_PATH", dbPath, 1)
+                setenv("MS_GRAPH_URL", "http://localhost", 1)
+                setenv("MS_GRAPH_TENANT_ID", "tenant", 1)
+                setenv("MS_GRAPH_CLIENT_ID", "client", 1)
+                setenv("MS_GRAPH_CLIENT_SECRET", "secret", 1)
+                setenv("MS_GRAPH_TEAM_IDS", "team1", 1)
+                app = try await Application.make(.testing)
+                try configure(app)
+                try await app.autoMigrate()
 	}
 
 	/// Shuts the application down after each test and removes the temporary database file.
 	override func tearDown() async throws {
-		if let cPath = getenv("SQLITE_PATH") {
-			let path = String(cString: cPath)
-			try? FileManager.default.removeItem(atPath: path)
-			unsetenv("SQLITE_PATH")
-		}
-		try await app.asyncShutdown()
-		try await super.tearDown()
-	}
+                if let cPath = getenv("SQLITE_PATH") {
+                        let path = String(cString: cPath)
+                        try? FileManager.default.removeItem(atPath: path)
+                        unsetenv("SQLITE_PATH")
+                }
+                unsetenv("MS_GRAPH_URL")
+                unsetenv("MS_GRAPH_TENANT_ID")
+                unsetenv("MS_GRAPH_CLIENT_ID")
+                unsetenv("MS_GRAPH_CLIENT_SECRET")
+                unsetenv("MS_GRAPH_TEAM_IDS")
+                try await app.asyncShutdown()
+                try await super.tearDown()
+        }
 }

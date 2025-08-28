@@ -10,11 +10,11 @@ public final class TimeEntry: Model, Content {
 	/// Unique identifier
 	@ID(key: .id) public var id: UUID?
 
-	/// Reference to the worker owning the entry
-	@Parent(key: "worker_id") public var worker: Worker
+        /// Reference to the worker owning the entry
+        @Parent(key: "worker_id") public var worker: Worker
 
-	/// Optional reference to the import batch that produced the entry
-	@OptionalParent(key: "batch_id") public var batch: ImportBatch?
+        /// Identifier of the corresponding record on Microsoft Graph
+        @Field(key: "graph_id") public var graphID: String
 
 	/// Date of the entry (shift day)
 	@Field(key: "date") public var date: Date
@@ -39,16 +39,16 @@ public final class TimeEntry: Model, Content {
 
 	/// Creates a new time entry
 	/// - Parameters:
-	///   - workerID: Identifier of the worker
-	///   - batchID: Import batch identifier
-	///   - date: Day of the entry
-	///   - startAt: Clock-in timestamp
-	///   - endAt: Clock-out timestamp
-	public init(workerID: UUID, batchID: UUID?, date: Date, startAt: Date, endAt: Date) {
-		self.$worker.id = workerID
-		self.$batch.id = batchID
-		self.date = date
-		self.startAt = startAt
-		self.endAt = endAt
-	}
+        ///   - workerID: Identifier of the worker
+        ///   - graphID: External identifier from Microsoft Graph
+        ///   - date: Day of the entry
+        ///   - startAt: Clock-in timestamp
+        ///   - endAt: Clock-out timestamp
+        public init(workerID: UUID, graphID: String, date: Date, startAt: Date, endAt: Date) {
+                self.$worker.id = workerID
+                self.graphID = graphID
+                self.date = date
+                self.startAt = startAt
+                self.endAt = endAt
+        }
 }

@@ -1,1005 +1,172 @@
 {
-    "openapi": "3.1.0",
-    "info": {
-        "title": "Backoffice Timesheet Importer API",
-        "version": "1.0.0",
-        "description": "API del microservizio Backoffice per l'import dei timesheet Shifts e la gestione dei dipendenti (Worker).\n\nNote: l'autenticazione è **fuori scope** di questo servizio. Gli endpoint sono pensati per uso interno al Backoffice.",
-        "x-audience": "internal",
-        "license": {
-            "name": "Proprietary - Internal Use Only"
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Timesheet API",
+    "version": "2.0.0",
+    "description": "API for managing workers and timesheets synchronized from Microsoft Graph."
+  },
+  "paths": {
+    "/workers": {
+      "get": {
+        "summary": "List workers",
+        "responses": {
+          "200": {
+            "description": "Array of workers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Worker" }
+                }
+              }
+            }
+          }
         }
-    },
-    "servers": [
-        {
-            "url": "https://backoffice.flowpay.local"
-        }
-    ],
-    "security": [],
-    "paths": {
-        "/imports/timesheet": {
-            "post": {
-                "summary": "Avvia l'import di un timesheet", 
-                "description": "Riceve l'identificativo del file Excel precedentemente caricato su aml.file. Crea un ImportBatch in stato `queued` e avvia l'elaborazione asincrona. Il servizio **non** modifica mai i timestamp originali: le pause mal registrate sono derivate come entità *Pause* e associate ai turni con regola di overlap massimo.",
-                "operationId": "uploadTimesheet",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "fileID": {
-                                        "type": "string",
-                                        "format": "uuid",
-                                        "description": "Identifier returned by aml.file for the uploaded spreadsheet."
-                                    }
-                                },
-                                "required": [
-                                    "fileID"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "202": {
-                        "description": "Batch accettato per l'elaborazione.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ImportBatch"
-                                },
-                                "examples": {
-                                    "accepted": {
-                                        "value": {
-                                            "id": "c88f7ae6-8f46-40a4-8b9f-9f0a1f1e9d2b",
-                                            "filename": "TimeSheetExport_2025-08-01.xlsx",
-                                            "uploadedBy": "ops.mrossi",
-                                            "rowsTotal": 0,
-                                            "rowsOk": 0,
-                                            "rowsError": 0,
-                                            "status": "queued",
-                                            "startedAt": null,
-                                            "finishedAt": null
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/BadRequest"
-                    },
-                    "415": {
-                        "description": "Tipo file non supportato."
-                    },
-                    "500": {
-                        "$ref": "#/components/responses/ServerError"
-                    }
-                }
+      },
+      "post": {
+        "summary": "Create worker",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WorkerInput" }
             }
-        },
-        "/imports/{batchId}": {
-            "get": {
-                "summary": "Dettaglio stato ImportBatch",
-                "operationId": "getImportBatch",
-                "parameters": [
-                    {
-                        "$ref": "#/components/parameters/BatchId"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Batch con stato aggiornato.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ImportBatch"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/NotFound"
-                    },
-                    "500": {
-                        "$ref": "#/components/responses/ServerError"
-                    }
-                }
-            }
-        },
-        "/batches/{batchId}/errors": {
-            "get": {
-                "summary": "Elenco errori/warning di import per batch",
-                "operationId": "listImportErrors",
-                "parameters": [
-                    {
-                        "$ref": "#/components/parameters/BatchId"
-                    },
-                    {
-                        "$ref": "#/components/parameters/Page"
-                    },
-                    {
-                        "$ref": "#/components/parameters/Per"
-                    },
-                    {
-                        "name": "severity",
-                        "in": "query",
-                        "description": "Filtra per severità (error|warn)",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "error",
-                                "warn"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "code",
-                        "in": "query",
-                        "description": "Filtra per codice errore (es. ORPHAN_BREAK).",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Lista paginata di ImportError.",
-                        "headers": {
-                            "X-Total": {
-                                "$ref": "#/components/headers/X-Total"
-                            },
-                            "X-Page": {
-                                "$ref": "#/components/headers/X-Page"
-                            },
-                            "X-Per-Page": {
-                                "$ref": "#/components/headers/X-Per-Page"
-                            }
-                        },
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/ImportError"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/NotFound"
-                    },
-                    "500": {
-                        "$ref": "#/components/responses/ServerError"
-                    }
-                }
-            }
-        },
-        "/workers": {
-            "post": {
-                "summary": "Crea un dipendente (Worker)",
-                "operationId": "createWorker",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkerCreate"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Creato",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Worker"
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "employeeKey duplicato"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/BadRequest"
-                    },
-                    "500": {
-                        "$ref": "#/components/responses/ServerError"
-                    }
-                }
-            },
-            "get": {
-                "summary": "Lista paginata di dipendenti",
-                "operationId": "listWorkers",
-                "parameters": [
-                    {
-                        "$ref": "#/components/parameters/Page"
-                    },
-                    {
-                        "$ref": "#/components/parameters/Per"
-                    },
-                    {
-                        "name": "q",
-                        "in": "query",
-                        "description": "Ricerca full-text su nome e employeeKey",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "x-faker": "name.fullName"
-                    },
-                    {
-                        "name": "team",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "description": "Filtro per team",
-                        "x-faker": "commerce.department"
-                    },
-                    {
-                        "name": "role",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "description": "Filtro per ruolo",
-                        "x-faker": "name.jobTitle"
-                    },
-                    {
-                        "name": "archived",
-                        "in": "query",
-                        "schema": {
-                            "type": "boolean"
-                        },
-                        "description": "Se true restituisce anche i worker archiviati (default false)"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Lista paginata di Worker.",
-                        "headers": {
-                            "X-Total": {
-                                "$ref": "#/components/headers/X-Total"
-                            },
-                            "X-Page": {
-                                "$ref": "#/components/headers/X-Page"
-                            },
-                            "X-Per-Page": {
-                                "$ref": "#/components/headers/X-Per-Page"
-                            }
-                        },
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/Worker"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/BadRequest"
-                    },
-                    "500": {
-                        "$ref": "#/components/responses/ServerError"
-                    }
-                }
-            }
-        },
-        "/workers/{id}": {
-            "get": {
-                "summary": "Dettaglio Worker",
-                "operationId": "getWorker",
-                "parameters": [
-                    {
-                        "$ref": "#/components/parameters/WorkerId"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Worker"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/NotFound"
-                    }
-                }
-            },
-            "put": {
-                "summary": "Aggiorna Worker",
-                "operationId": "updateWorker",
-                "parameters": [
-                    {
-                        "$ref": "#/components/parameters/WorkerId"
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkerUpdate"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Aggiornato",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Worker"
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "employeeKey duplicato"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/NotFound"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/BadRequest"
-                    }
-                }
-            },
-            "delete": {
-                "summary": "Archivia (soft delete) Worker",
-                "operationId": "archiveWorker",
-                "parameters": [
-                    {
-                        "$ref": "#/components/parameters/WorkerId"
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Archiviato"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/NotFound"
-                    }
-                }
-            }
-        },
-        "/workers/{id}/restore": {
-            "post": {
-                "summary": "Ripristina un Worker archiviato",
-                "operationId": "restoreWorker",
-                "parameters": [
-                    {
-                        "$ref": "#/components/parameters/WorkerId"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Worker"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/NotFound"
-                    }
-                }
-            }
-        },
-        "/workers/{id}/time-entries": {
-            "get": {
-                "summary": "Elenco time entries per Worker",
-                "operationId": "listTimeEntries",
-                "parameters": [
-                    { "$ref": "#/components/parameters/WorkerId" },
-                    {
-                        "name": "from",
-                        "in": "query",
-                        "required": false,
-                        "schema": { "type": "string", "format": "date-time" }
-                    },
-                    {
-                        "name": "to",
-                        "in": "query",
-                        "required": false,
-                        "schema": { "type": "string", "format": "date-time" }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Lista di time entries",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": { "$ref": "#/components/schemas/TimeEntry" }
-                                }
-                            }
-                        }
-                    },
-                    "404": { "$ref": "#/components/responses/NotFound" }
-                }
-            }
-        }
-    },
-    "components": {
-        "parameters": {
-            "BatchId": {
-                "name": "batchId",
-                "in": "path",
-                "required": true,
-                "schema": {
-                    "type": "string",
-                    "format": "uuid",
-                    "x-faker": "datatype.uuid"
-                },
-                "description": "Identificativo del batch di import"
-            },
-            "WorkerId": {
-                "name": "id",
-                "in": "path",
-                "required": true,
-                "schema": {
-                    "type": "string",
-                    "format": "uuid",
-                    "x-faker": "datatype.uuid"
-                },
-                "description": "Identificativo del Worker"
-            },
-            "Page": {
-                "name": "page",
-                "in": "query",
-                "schema": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "default": 1
-                },
-                "description": "Indice pagina (1-based)"
-            },
-            "Per": {
-                "name": "per",
-                "in": "query",
-                "schema": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 200,
-                    "default": 20
-                },
-                "description": "Record per pagina"
-            }
-        },
-        "headers": {
-            "X-Total": {
-                "description": "Totale elementi",
-                "schema": {
-                    "type": "integer",
-                    "minimum": 0
-                }
-            },
-            "X-Page": {
-                "description": "Indice pagina corrente (1-based)",
-                "schema": {
-                    "type": "integer",
-                    "minimum": 1
-                }
-            },
-            "X-Per-Page": {
-                "description": "Numero elementi per pagina",
-                "schema": {
-                    "type": "integer",
-                    "minimum": 1
-                }
-            }
+          }
         },
         "responses": {
-            "BadRequest": {
-                "description": "Richiesta non valida"
-            },
-            "NotFound": {
-                "description": "Risorsa non trovata"
-            },
-            "ServerError": {
-                "description": "Errore interno"
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Worker" }
+              }
             }
-        },
-        "schemas": {
-            "Worker": {
-                "type": "object",
-                "description": "Dipendente importato/gestito dal servizio Backoffice.",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "UUID del Worker",
-                        "x-faker": "datatype.uuid"
-                    },
-                    "employeeKey": {
-                        "type": "string",
-                        "description": "Chiave esterna/UPN/email o codice dipendente (univoca)",
-                        "x-faker": "internet.email"
-                    },
-                    "fullName": {
-                        "type": "string",
-                        "description": "Nome e cognome",
-                        "x-faker": "name.fullName"
-                    },
-                    "team": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Team di appartenenza",
-                        "x-faker": "commerce.department"
-                    },
-                    "role": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Ruolo del dipendente",
-                        "x-faker": "name.jobTitle"
-                    },
-                    "archivedAt": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time",
-                        "description": "Timestamp di archiviazione (soft delete)",
-                        "x-faker": "date.recent"
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "description": "Creazione record",
-                        "x-faker": "date.past"
-                    },
-                    "updatedAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "description": "Ultimo aggiornamento",
-                        "x-faker": "date.recent"
-                    }
-                },
-                "required": [
-                    "id",
-                    "employeeKey",
-                    "fullName",
-                    "createdAt",
-                    "updatedAt"
-                ]
-            },
-            "WorkerCreate": {
-                "type": "object",
-                "description": "Payload di creazione Worker.",
-                "properties": {
-                    "employeeKey": {
-                        "type": "string",
-                        "description": "Chiave esterna/UPN/email o codice dipendente (univoca)",
-                        "x-faker": "internet.email"
-                    },
-                    "fullName": {
-                        "type": "string",
-                        "description": "Nome e cognome",
-                        "x-faker": "name.fullName"
-                    },
-                    "team": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Team (opzionale)",
-                        "x-faker": "commerce.department"
-                    },
-                    "role": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Ruolo (opzionale)",
-                        "x-faker": "name.jobTitle"
-                    }
-                },
-                "required": [
-                    "employeeKey",
-                    "fullName"
-                ]
-            },
-            "WorkerUpdate": {
-                "type": "object",
-                "description": "Payload di aggiornamento Worker.",
-                "properties": {
-                    "employeeKey": {
-                        "type": "string",
-                        "description": "Chiave esterna/UPN/email o codice dipendente",
-                        "x-faker": "internet.email"
-                    },
-                    "fullName": {
-                        "type": "string",
-                        "description": "Nome e cognome",
-                        "x-faker": "name.fullName"
-                    },
-                    "team": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Team",
-                        "x-faker": "commerce.department"
-                    },
-                    "role": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Ruolo",
-                        "x-faker": "name.jobTitle"
-                    }
-                }
-            },
-            "ImportBatch": {
-                "type": "object",
-                "description": "Tracciamento di un upload e del relativo processamento.",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "x-faker": "datatype.uuid",
-                        "description": "UUID del batch"
-                    },
-                    "filename": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Nome file",
-                        "x-faker": "system.fileName"
-                    },
-                    "uploadedBy": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Identificativo dell'operatore/servizio",
-                        "x-faker": "internet.userName"
-                    },
-                    "rowsTotal": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "x-faker": "datatype.number",
-                        "description": "Numero totale righe lette"
-                    },
-                    "rowsOk": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "x-faker": "datatype.number",
-                        "description": "Numero righe importate"
-                    },
-                    "rowsError": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "x-faker": "datatype.number",
-                        "description": "Numero righe con errori/warning"
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "queued",
-                            "processing",
-                            "completed",
-                            "completed_with_errors",
-                            "failed"
-                        ],
-                        "description": "Stato del batch"
-                    },
-                    "startedAt": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time",
-                        "x-faker": "date.recent",
-                        "description": "Inizio elaborazione"
-                    },
-                    "finishedAt": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time",
-                        "x-faker": "date.recent",
-                        "description": "Fine elaborazione"
-                    }
-                },
-                "required": [
-                    "id",
-                    "status",
-                    "rowsTotal",
-                    "rowsOk",
-                    "rowsError"
-                ]
-            },
-            "ImportError": {
-                "type": "object",
-                "description": "Errore o warning riscontrato durante l'import.",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "x-faker": "datatype.uuid"
-                    },
-                    "batchId": {
-                        "type": "string",
-                        "format": "uuid",
-                        "x-faker": "datatype.uuid"
-                    },
-                    "rowNumber": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "description": "Numero riga nello sheet (1-based)",
-                        "x-faker": "datatype.number"
-                    },
-                    "errorCode": {
-                        "type": "string",
-                        "description": "Codice errore (es. ORPHAN_BREAK, INVALID_TIME_RANGE, PARSING_ERROR, OVERLAPPING_SHIFTS, UNPAID_MISMATCH)",
-                        "x-faker": "hacker.abbreviation"
-                    },
-                    "severity": {
-                        "type": "string",
-                        "enum": [
-                            "error",
-                            "warn"
-                        ],
-                        "description": "Severità"
-                    },
-                    "details": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Dettagli diagnostici",
-                        "x-faker": "lorem.sentence"
-                    },
-                    "rawSnapshot": {
-                        "type": [
-                            "object",
-                            "null"
-                        ],
-                        "description": "Record sorgente (normalizzato)"
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "x-faker": "date.recent"
-                    }
-                },
-                "required": [
-                    "id",
-                    "batchId",
-                    "rowNumber",
-                    "errorCode",
-                    "severity",
-                    "createdAt"
-                ]
-            },
-            "Shift": {
-                "type": "object",
-                "description": "Turno normalizzato (solo a fini documentali).",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "x-faker": "datatype.uuid"
-                    },
-                    "workerId": {
-                        "type": "string",
-                        "format": "uuid",
-                        "x-faker": "datatype.uuid"
-                    },
-                    "date": {
-                        "type": "string",
-                        "format": "date",
-                        "x-faker": "date.past"
-                    },
-                    "label": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "x-faker": "word.noun"
-                    },
-                    "shiftStart": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time",
-                        "x-faker": "date.recent"
-                    },
-                    "shiftEnd": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time",
-                        "x-faker": "date.recent"
-                    },
-                    "entry": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time",
-                        "x-faker": "date.recent"
-                    },
-                    "exit": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time",
-                        "x-faker": "date.recent"
-                    },
-                    "actualExit": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time",
-                        "x-faker": "date.recent"
-                    },
-                    "unpaidMinutesReported": {
-                        "type": [
-                            "integer",
-                            "null"
-                        ],
-                        "x-faker": "datatype.number"
-                    },
-                    "unpaidMinutesComputed": {
-                        "type": [
-                            "integer",
-                            "null"
-                        ],
-                        "x-faker": "datatype.number"
-                    },
-                    "notes": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "x-faker": "lorem.sentence"
-                    },
-                    "sourceRowHash": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "x-faker": "string.alphanumeric"
-                    },
-                    "batchId": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "uuid",
-                        "x-faker": "datatype.uuid"
-                    }
-                }
-            },
-            "Pause": {
-                "type": "object",
-                "description": "Pausa derivata o da colonne dedicate o da riga anomala.",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "x-faker": "datatype.uuid"
-                    },
-                    "shiftId": {
-                        "type": "string",
-                        "format": "uuid",
-                        "x-faker": "datatype.uuid"
-                    },
-                    "start": {
-                        "type": "string",
-                        "format": "date-time",
-                        "x-faker": "date.recent"
-                    },
-                    "end": {
-                        "type": "string",
-                        "format": "date-time",
-                        "x-faker": "date.recent"
-                    },
-                    "duration": {
-                        "type": "integer",
-                        "description": "Durata minuti (intersezione con il turno)",
-                        "x-faker": "datatype.number"
-                    },
-                    "sourceRowHash": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "x-faker": "string.alphanumeric"
-                    },
-                    "batchId": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "uuid",
-                        "x-faker": "datatype.uuid"
-                    }
-                }
-            },
-            "Break": {
-                "type": "object",
-                "description": "Break interval within a time entry.",
-                "properties": {
-                    "startAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "endAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "required": [
-                    "startAt",
-                    "endAt"
-                ]
-            },
-            "TimeEntry": {
-                "type": "object",
-                "description": "Normalized working interval for a worker.",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "date": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "startAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "endAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "breaks": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/Break"
-                        }
-                    }
-                },
-                "required": [
-                    "id",
-                    "date",
-                    "startAt",
-                    "endAt"
-                ]
-            }
+          }
         }
+      }
+    },
+    "/workers/{id}": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+      ],
+      "get": {
+        "summary": "Get worker",
+        "responses": {
+          "200": {
+            "description": "Worker",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Worker" } } }
+          },
+          "404": { "description": "Not found" }
+        }
+      },
+      "put": {
+        "summary": "Update worker",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/WorkerUpdate" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Worker" } } }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Archive worker",
+        "responses": { "204": { "description": "Archived" } }
+      }
+    },
+    "/workers/{id}/restore": {
+      "post": {
+        "summary": "Restore worker",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "responses": {
+          "200": {
+            "description": "Worker",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Worker" } } }
+          }
+        }
+      }
+    },
+    "/workers/{id}/time-entries": {
+      "get": {
+        "summary": "List time entries for worker",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "responses": {
+          "200": {
+            "description": "Array of time entries",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TimeEntry" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync/{teamId}": {
+      "post": {
+        "summary": "Synchronize workers, time entries and leaves from Microsoft Graph",
+        "parameters": [ { "name": "teamId", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "202": { "description": "Sync accepted" } }
+      }
     }
+  },
+  "components": {
+    "schemas": {
+      "Worker": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "employeeKey": { "type": "string" },
+          "fullName": { "type": "string" },
+          "team": { "type": "string", "nullable": true },
+          "role": { "type": "string", "nullable": true },
+          "archivedAt": { "type": "string", "format": "date-time", "nullable": true }
+        },
+        "required": ["id", "employeeKey", "fullName"]
+      },
+      "WorkerInput": {
+        "type": "object",
+        "properties": {
+          "employeeKey": { "type": "string" },
+          "fullName": { "type": "string" },
+          "team": { "type": "string", "nullable": true },
+          "role": { "type": "string", "nullable": true }
+        },
+        "required": ["employeeKey", "fullName"]
+      },
+      "WorkerUpdate": {
+        "type": "object",
+        "properties": {
+          "employeeKey": { "type": "string", "nullable": true },
+          "fullName": { "type": "string", "nullable": true },
+          "team": { "type": "string", "nullable": true },
+          "role": { "type": "string", "nullable": true }
+        }
+      },
+      "TimeEntry": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "date": { "type": "string", "format": "date" },
+          "startAt": { "type": "string", "format": "date-time" },
+          "endAt": { "type": "string", "format": "date-time" },
+          "breaks": { "type": "array", "items": { "$ref": "#/components/schemas/Break" } }
+        },
+        "required": ["id", "date", "startAt", "endAt", "breaks"]
+      },
+      "Break": {
+        "type": "object",
+        "properties": {
+          "startAt": { "type": "string", "format": "date-time" },
+          "endAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["startAt", "endAt"]
+      }
+    }
+  }
 }

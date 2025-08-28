@@ -1,65 +1,47 @@
 # Timesheet Service
 
 ## Overview
-The Timesheet service imports working time data exported from **Microsoft Teams Shifts** and exposes a REST API for worker management and reporting. Uploaded spreadsheets are normalized to produce consistent **workers**, **time entries**, **breaks**, and **import batches**.
+The Timesheet service retrieves worker schedules and attendance directly from **Microsoft Teams Shifts** via the Microsoft Graph API. Planned shifts, time cards, time off requests and breaks are fetched from Graph and persisted as **workers**, **time entries**, **leaves** and **breaks**.
 
 - **Language/Framework**: Swift 5, Vapor 4, Fluent
 - **Persistence**: PostgreSQL in production, SQLite in tests
-- **Async processing**: `Job` module hosts a Vapor `AsyncJob` that parses spreadsheets after upload
 - **OpenAPI**: see [`openapi.json`](openapi.json)
 
 ## Architecture
 ```mermaid
 sequenceDiagram
-    participant UI as Backoffice UI
-    participant FILE as aml.file
-    participant API as Timesheet API
-    participant J as Import Job
+    participant API
+    participant MS as Microsoft Graph
     participant DB as Database
-    UI->>FILE: upload file
-    UI->>API: POST /imports/timesheet {fileID}
-    API->>DB: INSERT ImportBatch(status=queued)
-    API-->>UI: 202 Accepted {batchId}
-    API-->>J: enqueue(batchId, fileID)
-    J->>FILE: GET /files/{fileID}
-    J->>DB: UPDATE ImportBatch(status=processing)
-    J->>J: parse & normalize rows
-    J->>DB: UPSERT Worker, TimeEntry, Break
-    J->>DB: UPDATE counters & status
+    API->>MS: GET /users\nGET /teams/{teamId}/schedule/*
+    MS-->>API: JSON payloads
+    API->>DB: Upsert workers, time entries, leaves, breaks
 ```
 
 ## Entities
 | Entity | Description |
 | ------ | ----------- |
-| **Worker** | Employee registry. `archivedAt` marks logical deletion. |
-| **TimeEntry** | Normalized shift with start/end timestamps. |
+| **Worker** | Employee registry sourced from Microsoft Graph users. |
+| **TimeEntry** | Working interval retrieved from Graph time cards. |
+| **Leave** | Absence interval coming from Graph time-off requests. |
 | **Break** | Pause associated to a `TimeEntry`. |
-| **ImportBatch** | Tracks upload status and processed row counters. |
 
-## Import Workflow
-1. The Backoffice uploads the Excel file to **aml.file** obtaining a `fileID`.
-2. `POST /imports/timesheet` sends the `fileID` and creates an `ImportBatch` in state `queued`.
-3. `TimesheetImportJob` retrieves the file from aml.file, parses it with Python `openpyxl`, normalizes rows and persists workers, entries and breaks.
-4. Batch counters (`rowsTotal`, `rowsOk`, `rowsError`) and status are updated.
-5. The batch status can be queried via `GET /imports/{batchId}`.
-
-## Normalization Rules
-1. Rows are grouped by **worker** and **date**.
-2. Rows with a *shift label* create a `TimeEntry` with start/end times.
-3. Rows without label but with entry/exit times become `Break` intervals.
-4. Breaks are attached to the shift with the **largest overlap**; if a break ends after the shift, the shift end is extended.
-5. Unpaid minutes are added to the break duration when both `breakStart` and `breakEnd` are absent.
+## Sync Workflow
+1. `POST /sync/{teamId}` triggers retrieval from Microsoft Graph.
+2. The API fetches users, shifts, time cards and time-off requests for the team.
+3. Data is normalized and stored as workers, time entries, leaves and breaks.
+4. A background job periodically invokes the same synchronization for configured teams.
+5. Consumers query workers and time entries via REST endpoints.
 
 ## API Summary
-- `POST /workers` – create a worker
-- `GET /workers` – list workers with pagination and filtering
+- `POST /workers` – create a worker manually
+- `GET /workers` – list workers
 - `GET /workers/{id}` – retrieve a worker
 - `PUT /workers/{id}` – update a worker
 - `DELETE /workers/{id}` – archive a worker
 - `POST /workers/{id}/restore` – restore an archived worker
 - `GET /workers/{id}/time-entries` – list time entries for a worker
-- `POST /imports/timesheet` – start import referencing a file stored on aml.file
-- `GET /imports/{batchId}` – get import batch status
+- `POST /sync/{teamId}` – synchronize data from Microsoft Graph for a team
 
 ## Environment Variables
 | Variable | Description | Default |
@@ -74,7 +56,23 @@ sequenceDiagram
 | `DB_PASSWORD` | Database password | `postgres` |
 | `SQLITE_PATH` | SQLite file path (tests) | `db.sqlite` |
 | `REQUESTS_MONGO_STRING` | Connection string for Mongo request logging | `null` |
-| `FILE_SERVICE_URL` | Base URL of aml.file service | `http://aml-file` |
+| `MS_GRAPH_URL` | Base URL of Microsoft Graph | `https://graph.microsoft.com/v1.0` |
+| `MS_GRAPH_TENANT_ID` | Azure AD tenant identifier | `null` |
+| `MS_GRAPH_CLIENT_ID` | Azure AD application client id | `null` |
+| `MS_GRAPH_CLIENT_SECRET` | Azure AD application client secret | `null` |
+| `MS_GRAPH_TEAM_IDS` | Comma separated team identifiers for scheduled sync | `""` |
+
+## Microsoft Graph Application Permissions
+The Azure AD application used for authentication must be granted the following
+Microsoft Graph application permissions:
+
+- `User.Read.All` – allows the service to list users in the tenant
+- `Group.Read.All` – enables access to Teams resources
+- `Schedule.Read.All` – permits reading shifts, time cards and time-off requests
+- `Presence.Read.All` – allows retrieval of user presence information
+
+Without these permissions the synchronization endpoints will not be able to
+fetch data from Microsoft Graph.
 
 ## Development
 1. **Bootstrap**
@@ -89,20 +87,3 @@ sequenceDiagram
    ```bash
    swift run Run
    ```
-4. **Migrations**
-   A single migration `LAB-7` creates all tables related to workers and timesheets.
-
-## Sequence of a Successful Import
-```mermaid
-flowchart TD
-    A[Upload XLSX] --> B[Create ImportBatch]
-    B --> C[Queue TimesheetImportJob]
-    C --> D[Parse Excel via openpyxl]
-    D --> E[Normalize rows]
-    E --> F[Persist Worker/TimeEntry/Break]
-    F --> G[Update ImportBatch counters]
-    G --> H[Query status via API]
-```
-
-## Testing Notes
-The end‑to‑end import test is skipped unless `ENABLE_TIMESHEET_E2E=1` and a Python environment with `openpyxl` is available.

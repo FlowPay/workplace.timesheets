@@ -27,7 +27,7 @@ let package = Package(
                 .package(url: "https://github.com/vapor/fluent-sqlite-driver.git", from: "4.0.0"),
                 .package(url: "https://github.com/vapor/fluent.git", from: "4.0.0"),
                 .package(url: "https://github.com/vapor/vapor.git", from: "4.27.3"),
-                .package(url: "https://github.com/vapor/queues.git", from: "1.0.0"),
+                .package(url: "https://github.com/vapor/queues.git", from: "1.10.0"),
         ],
         targets: [
                 .target(
@@ -40,22 +40,11 @@ let package = Package(
                         ]
                 ),
                 .target(
-                        name: "Job",
-                        dependencies: [
-                                .target(name: "Core"),
-                                fluent,
-                                vapor,
-                                queues,
-                        ]
-                ),
-                .target(
                         name: "Api",
                         dependencies: [
                                 .target(name: "Core"),
-                                .target(name: "Job"),
                                 flowpayUtilities,
                                 vapor,
-                                queues,
 
                         ],
                         swiftSettings: [
@@ -67,7 +56,6 @@ let package = Package(
                         dependencies: [
                                 .target(name: "Api"),
                                 .target(name: "Core"),
-                                .target(name: "Job"),
                                 flowpayUtilities,
                                 fluent,
                                 mongodb,
@@ -94,12 +82,8 @@ let package = Package(
                                 "Api",
                                 "App",
                                 "Core",
-                                "Job",
-                                queues,
                         ],
-                        resources: [
-                                .copy("examples")
-                        ]
+                        resources: []
                 ),
         ]
 )

@@ -2,6 +2,7 @@ import Api
 import Core
 import FluentUtilities
 import Foundation
+import Queues
 import ServerUtilities
 import Vapor
 
@@ -47,17 +48,24 @@ public func configure(_ app: Application) throws {
 	app.middleware.use(DatabaseMiddleware())
 	app.middleware.use(ErrorResponseMiddleware())
 
-	/// Register routes
-	try routes(app: app)
+        /// Register routes
+        try routes(app: app)
 
-	/// Output all registered routes for debugging
-	app.routes.all.forEach { print($0) }
+        /// Output all registered routes for debugging
+        app.routes.all.forEach { print($0) }
 
-	/// Configure external aml.file client using environment configuration
-	if let base = Configuration.shared.fileServiceURL {
-		// Register a live client that fetches files from the remote service
-		app.fileAdapter = FileAdapter(baseURL: base)
-	} else {
-		app.logger.warning("FILE_SERVICE_URL not set; aml.file client will not be available")
-	}
+        /// Configure Microsoft Graph client using OAuth2 client credentials if available
+        if let base = Configuration.shared.msGraphURL,
+           let tenant = Configuration.shared.msGraphTenantId,
+           let clientId = Configuration.shared.msGraphClientId,
+           let secret = Configuration.shared.msGraphClientSecret {
+                let provider = ClientCredentialsTokenProvider(tenantId: tenant, clientId: clientId, clientSecret: secret)
+                app.graphClient = MicrosoftGraphClient(baseURL: base, tokenProvider: provider)
+        } else {
+                app.logger.warning("Microsoft Graph not configured; graph client will not be available")
+        }
+
+        /// Schedule periodic synchronization using an in-process job
+        app.queues.schedule(GraphSyncJob()).hourly().at(0)
+        try app.queues.startScheduledJobs()
 }
