@@ -35,7 +35,7 @@ public struct TimesheetImportJob: AsyncJob {
 
 		do {
 			// Retrieve the remote file and store it temporarily on disk
-			let data = try await context.application.amlFileClient.fetch(id: payload.fileID, client: context.application.client)
+			let data = try await context.application.fileAdapter.fetch(id: payload.fileID, client: context.application.client)
 			let directory = context.application.directory.publicDirectory + "uploads/"
 			try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
 			let path = directory + "\(payload.batchID.uuidString).xlsx"

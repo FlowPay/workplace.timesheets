@@ -24,23 +24,23 @@ final class TimesheetImportTests: BaseTestCase {
 		let fileURL = examples.appendingPathComponent("TimeSheetExport_2025-7-1_TO_2025-8-7_TEAM_7331a68b-6a8b-475f-9286-b78c42c78543_dd159988a3ba498991157759e26f5672.xlsx")
 
 		// Register mock client returning the example file
-		app.amlFileClient = TestAmlFileClient(fileURL: fileURL)
+		app.fileAdapter = TestAmlFileClient(fileURL: fileURL)
 		let fileID = UUID()
 
-                var batchID: UUID!
-                try app.test(
-                        .POST,
-                        "/imports/timesheet",
-                        beforeRequest: { req in
-                                // Only the file identifier is required by the API
-                                try req.content.encode(ImportBatchDTO.UploadInput(fileID: fileID))
-                        },
-                        afterResponse: { res in
-                                XCTAssertEqual(res.status, .accepted)
-                                let batch = try res.content.decode(ImportBatch.self)
-                                batchID = try XCTUnwrap(batch.id)
-                        }
-                )
+		var batchID: UUID!
+		try app.test(
+			.POST,
+			"/imports/timesheet",
+			beforeRequest: { req in
+				// Only the file identifier is required by the API
+				try req.content.encode(ImportBatchDTO.UploadInput(fileID: fileID))
+			},
+			afterResponse: { res in
+				XCTAssertEqual(res.status, .accepted)
+				let batch = try res.content.decode(ImportBatch.self)
+				batchID = try XCTUnwrap(batch.id)
+			}
+		)
 
 		// Execute job manually using the provided file identifier
 		let context = QueueContext(queueName: .default, configuration: app.queues.configuration, application: app, logger: app.logger, on: app.eventLoopGroup.next())

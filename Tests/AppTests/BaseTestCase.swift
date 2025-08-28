@@ -44,7 +44,7 @@ class BaseTestCase: XCTestCase {
 			.deletingLastPathComponent()
 			.appendingPathComponent("examples")
 		let fileURL = examples.appendingPathComponent("TimeSheetExport_2025-7-1_TO_2025-8-7_TEAM_7331a68b-6a8b-475f-9286-b78c42c78543_dd159988a3ba498991157759e26f5672.xlsx")
-		app.amlFileClient = TestAmlFileClient(fileURL: fileURL)
+		app.fileAdapter = TestAmlFileClient(fileURL: fileURL)
 	}
 
 	/// Shuts the application down after each test and removes the temporary database file.

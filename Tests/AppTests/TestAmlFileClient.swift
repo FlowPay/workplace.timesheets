@@ -4,7 +4,7 @@ import Vapor
 @testable import Core
 
 /// Test implementation returning a static Excel file bundled with the tests.
-struct TestAmlFileClient: AmlFileClient {
+struct TestAmlFileClient: FileAdapterProtocol {
 	/// Location of the Excel example on disk
 	let fileURL: URL
 
