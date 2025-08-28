@@ -31,7 +31,7 @@ func init_database(app: Application) throws {
 /// - Parameter app: Application instance
 func postgres_init(app: Application) throws {
 	/// TLS settings for the connection
-	let tlsConfiguration: PostgresNIO.PostgresConnection.Configuration.TLS = .disable
+	let tlsConfiguration: PostgresNIO.PostgresConnection.Configuration.TLS = try .prefer(.init(configuration: .makeClientConfiguration()))
 
 	app.databases.use(
 		.postgres(
