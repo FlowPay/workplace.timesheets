@@ -7,6 +7,7 @@ final class SyncControllerTests: BaseTestCase {
     /// Ensures users, time entries, breaks and leaves are stored.
     func testSyncPersistsEntities() async throws {
         struct MockGraph: MicrosoftGraphClientProtocol {
+            func listTeams(client: Client) async throws -> [GraphTeam] { [] }
             func listUsers(client: Client) async throws -> [GraphUser] {
                 [GraphUser(id: "u1", displayName: "Alice")]
             }

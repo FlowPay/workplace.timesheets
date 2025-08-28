@@ -39,7 +39,6 @@ class BaseTestCase: XCTestCase {
                 setenv("MS_GRAPH_TENANT_ID", "tenant", 1)
                 setenv("MS_GRAPH_CLIENT_ID", "client", 1)
                 setenv("MS_GRAPH_CLIENT_SECRET", "secret", 1)
-                setenv("MS_GRAPH_TEAM_IDS", "team1", 1)
                 app = try await Application.make(.testing)
                 try configure(app)
                 try await app.autoMigrate()
@@ -56,7 +55,6 @@ class BaseTestCase: XCTestCase {
                 unsetenv("MS_GRAPH_TENANT_ID")
                 unsetenv("MS_GRAPH_CLIENT_ID")
                 unsetenv("MS_GRAPH_CLIENT_SECRET")
-                unsetenv("MS_GRAPH_TEAM_IDS")
                 try await app.asyncShutdown()
                 try await super.tearDown()
         }

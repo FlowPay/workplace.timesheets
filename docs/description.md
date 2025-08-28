@@ -30,7 +30,7 @@ sequenceDiagram
 1. `POST /sync/{teamId}` triggers retrieval from Microsoft Graph.
 2. The API fetches users, shifts, time cards and time-off requests for the team.
 3. Data is normalized and stored as workers, time entries, leaves and breaks.
-4. A background job periodically invokes the same synchronization for configured teams.
+4. A background job periodically auto-discovers all Teams in the tenant and invokes the same synchronization for each team.
 5. Consumers query workers and time entries via REST endpoints.
 
 ## API Summary
@@ -60,7 +60,6 @@ sequenceDiagram
 | `MS_GRAPH_TENANT_ID` | Azure AD tenant identifier | `null` |
 | `MS_GRAPH_CLIENT_ID` | Azure AD application client id | `null` |
 | `MS_GRAPH_CLIENT_SECRET` | Azure AD application client secret | `null` |
-| `MS_GRAPH_TEAM_IDS` | Comma separated team identifiers for scheduled sync | `""` |
 
 ## Microsoft Graph Application Permissions
 The Azure AD application used for authentication must be granted the following

@@ -18,6 +18,8 @@ public enum MicrosoftGraphScope {
 
 /// Protocol defining minimal Microsoft Graph operations used by the service.
 public protocol MicrosoftGraphClientProtocol {
+    /// Retrieves all teams in the tenant (basic info).
+    func listTeams(client: Client) async throws -> [GraphTeam]
     /// Retrieves all users in the tenant.
     func listUsers(client: Client) async throws -> [GraphUser]
     /// Retrieves shifts for a specific team.
@@ -59,6 +61,15 @@ public struct MicrosoftGraphClient: MicrosoftGraphClientProtocol {
         return try response.content.decode(T.self)
     }
 
+    /// Returns the list of teams (id, displayName) in the tenant.
+    /// Uses the Groups endpoint filtered by teams.
+    public func listTeams(client: Client) async throws -> [GraphTeam] {
+        // Filter groups that are Teams and select only id and displayName
+        let path = "/groups?$filter=resourceProvisioningOptions/Any(x:x eq 'Team')&$select=id,displayName"
+        let wrapper: GraphListWrapper<GraphTeam> = try await get(path, client: client, as: GraphListWrapper<GraphTeam>.self)
+        return wrapper.value
+    }
+
     /// Returns the list of users.
     public func listUsers(client: Client) async throws -> [GraphUser] {
         let wrapper: GraphListWrapper<GraphUser> = try await get("/users", client: client, as: GraphListWrapper<GraphUser>.self)
@@ -97,6 +108,12 @@ struct GraphListWrapper<T: Decodable>: Decodable {
 
 /// Simplified Graph user representation.
 public struct GraphUser: Content {
+    public let id: String
+    public let displayName: String?
+}
+
+/// Simplified Graph team representation.
+public struct GraphTeam: Content {
     public let id: String
     public let displayName: String?
 }

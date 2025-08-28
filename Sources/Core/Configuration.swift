@@ -49,8 +49,7 @@ extension Application {
                 public let msGraphClientId: String?
                 /// Optional client secret for Microsoft Graph OAuth
                 public let msGraphClientSecret: String?
-                /// Comma separated list of team identifiers to sync
-                public let msGraphTeamIDs: [String]
+                // No per-team env config; teams are auto-discovered via Graph
 
 		/// Initialize configuration by reading environment values
 		init() {
@@ -92,12 +91,6 @@ extension Application {
                                         self.msGraphClientSecret = secret
                                 } else {
                                         self.msGraphClientSecret = nil
-                                }
-
-                                if let teams: String = try? Environment.process.retrieve("MS_GRAPH_TEAM_IDS"), !teams.isEmpty {
-                                        self.msGraphTeamIDs = teams.split(separator: ",").map { String($0) }
-                                } else {
-                                        self.msGraphTeamIDs = []
                                 }
 
 			} catch let error {
