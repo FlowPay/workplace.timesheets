@@ -19,9 +19,9 @@ func init_database(app: Application) throws {
 		try postgres_init(app: app)
 	}
 
-	app.migrations.add([
-		FPY475()
-	])
+        app.migrations.add([
+                LAB7(),
+        ])
 }
 
 /// Configure PostgreSQL database

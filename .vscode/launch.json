@@ -1,22 +1,22 @@
 {
-    "configurations": [
-        {
-            "type": "swift",
-            "request": "launch",
-            "args": [],
-            "cwd": "${workspaceFolder:swift-microservice-template}",
-            "name": "Debug Run",
-            "program": "${workspaceFolder:swift-microservice-template}/.build/debug/Run",
-            "preLaunchTask": "swift: Build Debug Run"
-        },
-        {
-            "type": "swift",
-            "request": "launch",
-            "args": [],
-            "cwd": "${workspaceFolder:swift-microservice-template}",
-            "name": "Release Run",
-            "program": "${workspaceFolder:swift-microservice-template}/.build/release/Run",
-            "preLaunchTask": "swift: Build Release Run"
-        }
-    ]
+  "configurations": [
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:workplace.timesheets}",
+      "name": "Debug Run",
+      "program": "${workspaceFolder:workplace.timesheets}/.build/debug/Run",
+      "preLaunchTask": "swift: Build Debug Run"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:workplace.timesheets}",
+      "name": "Release Run",
+      "program": "${workspaceFolder:workplace.timesheets}/.build/release/Run",
+      "preLaunchTask": "swift: Build Release Run"
+    }
+  ]
 }

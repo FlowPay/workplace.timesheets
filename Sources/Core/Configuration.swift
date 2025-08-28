@@ -55,7 +55,11 @@ extension Application {
 				self.dbPort = try Environment.process.retrieve("DB_PORT")
 				self.dbName = try Environment.process.retrieve("DB_SCHEMA")
 				self.sqlitePath = try? Environment.process.retrieve("SQLITE_PATH")
-				self.requestsMongoString = try? Environment.process.retrieve("REQUESTS_MONGO_STRING")
+                                if let mongo: String = try? Environment.process.retrieve("REQUESTS_MONGO_STRING"), !mongo.isEmpty {
+                                        self.requestsMongoString = mongo
+                                } else {
+                                        self.requestsMongoString = nil
+                                }
 
 			} catch let error {
 				/// Build an error message and terminate on failure

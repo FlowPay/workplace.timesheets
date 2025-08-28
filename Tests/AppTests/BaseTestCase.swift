@@ -1,3 +1,4 @@
+import Foundation
 import XCTVapor
 
 @testable import Api
@@ -27,15 +28,25 @@ class BaseTestCase: XCTestCase {
 	/// Creates the application and runs migrations before each test.
 	override func setUp() async throws {
 		try await super.setUp()
+		let fileManager = FileManager.default
+		let dbPath = fileManager.temporaryDirectory
+			.appendingPathComponent(UUID().uuidString + ".sqlite").path
+		if fileManager.fileExists(atPath: dbPath) {
+			try? fileManager.removeItem(atPath: dbPath)
+		}
+		setenv("SQLITE_PATH", dbPath, 1)
 		app = try await Application.make(.testing)
 		try configure(app)
-		try await app.autoRevert()
 		try await app.autoMigrate()
 	}
 
-	/// Shuts the application down and reverts the database after each test.
+	/// Shuts the application down after each test and removes the temporary database file.
 	override func tearDown() async throws {
-		try await app.autoRevert()
+		if let cPath = getenv("SQLITE_PATH") {
+			let path = String(cString: cPath)
+			try? FileManager.default.removeItem(atPath: path)
+			unsetenv("SQLITE_PATH")
+		}
 		try await app.asyncShutdown()
 		try await super.tearDown()
 	}

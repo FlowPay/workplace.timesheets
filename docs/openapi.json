@@ -411,6 +411,41 @@
                     }
                 }
             }
+        },
+        "/workers/{id}/time-entries": {
+            "get": {
+                "summary": "Elenco time entries per Worker",
+                "operationId": "listTimeEntries",
+                "parameters": [
+                    { "$ref": "#/components/parameters/WorkerId" },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "required": false,
+                        "schema": { "type": "string", "format": "date-time" }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": false,
+                        "schema": { "type": "string", "format": "date-time" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista di time entries",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/TimeEntry" }
+                                }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
         }
     },
     "components": {
@@ -922,6 +957,58 @@
                         "x-faker": "datatype.uuid"
                     }
                 }
+            },
+            "Break": {
+                "type": "object",
+                "description": "Break interval within a time entry.",
+                "properties": {
+                    "startAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "endAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "startAt",
+                    "endAt"
+                ]
+            },
+            "TimeEntry": {
+                "type": "object",
+                "description": "Normalized working interval for a worker.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "startAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "endAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "breaks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Break"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "date",
+                    "startAt",
+                    "endAt"
+                ]
             }
         }
     }

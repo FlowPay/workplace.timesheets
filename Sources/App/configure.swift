@@ -47,9 +47,9 @@ public func configure(_ app: Application) throws {
 	app.middleware.use(DatabaseMiddleware())
 	app.middleware.use(ErrorResponseMiddleware())
 
-	/// Register routes
-	try routes(app: app)
+        /// Register routes
+        try routes(app: app)
 
-	/// Output all registered routes for debugging
-	app.routes.all.forEach { print($0) }
+        /// Output all registered routes for debugging
+        app.routes.all.forEach { print($0) }
 }
