@@ -54,16 +54,11 @@ public func configure(_ app: Application) throws {
         /// Output all registered routes for debugging
         app.routes.all.forEach { print($0) }
 
-        /// Configure Microsoft Graph client using OAuth2 client credentials if available
-        if let base = Configuration.shared.msGraphURL,
-           let tenant = Configuration.shared.msGraphTenantId,
-           let clientId = Configuration.shared.msGraphClientId,
-           let secret = Configuration.shared.msGraphClientSecret {
-                let provider = ClientCredentialsTokenProvider(tenantId: tenant, clientId: clientId, clientSecret: secret)
-                app.graphClient = MicrosoftGraphClient(baseURL: base, tokenProvider: provider)
-        } else {
-                app.logger.warning("Microsoft Graph not configured; graph client will not be available")
-        }
+        /// Configure Microsoft Graph client using OAuth2 client credentials (required)
+        let provider = ClientCredentialsTokenProvider(tenantId: Configuration.shared.msGraphTenantId,
+                                                      clientId: Configuration.shared.msGraphClientId,
+                                                      clientSecret: Configuration.shared.msGraphClientSecret)
+        app.graphClient = MicrosoftGraphClient(baseURL: Configuration.shared.msGraphURL, tokenProvider: provider)
 
         /// Schedule periodic synchronization using an in-process job
         app.queues.schedule(GraphSyncJob()).hourly().at(0)

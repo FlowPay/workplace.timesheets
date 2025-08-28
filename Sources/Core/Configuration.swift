@@ -39,17 +39,19 @@ extension Application {
 		public let dbName: String
 		/// Optional path to a SQLite database file
 		public let sqlitePath: String?
-                /// Optional connection string for request logging database
-                public let requestsMongoString: String?
-                /// Optional base URL for Microsoft Graph API
-                public let msGraphURL: String?
-                /// Optional tenant identifier for Microsoft Graph OAuth
-                public let msGraphTenantId: String?
-                /// Optional client identifier for Microsoft Graph OAuth
-                public let msGraphClientId: String?
-                /// Optional client secret for Microsoft Graph OAuth
-                public let msGraphClientSecret: String?
-                // No per-team env config; teams are auto-discovered via Graph
+		/// Optional connection string for request logging database
+		public let requestsMongoString: String?
+		/// Base URL for Microsoft Graph API
+		public let msGraphURL: String
+		/// Tenant identifier for Microsoft Graph OAuth
+		public let msGraphTenantId: String
+		/// Client identifier for Microsoft Graph OAuth
+		public let msGraphClientId: String
+		/// Client secret for Microsoft Graph OAuth
+		public let msGraphClientSecret: String
+		// Teams are auto-discovered via Graph
+		/// Optional list of Azure AD group names; when provided, only members are considered active
+		public let msGraphGroupNames: [String]
 
 		/// Initialize configuration by reading environment values
 		init() {
@@ -63,36 +65,22 @@ extension Application {
 				self.dbHostname = try Environment.process.retrieve("DB_HOSTNAME")
 				self.dbPort = try Environment.process.retrieve("DB_PORT")
 				self.dbName = try Environment.process.retrieve("DB_SCHEMA")
-                                self.sqlitePath = try? Environment.process.retrieve("SQLITE_PATH")
-                                if let mongo: String = try? Environment.process.retrieve("REQUESTS_MONGO_STRING"), !mongo.isEmpty {
-                                        self.requestsMongoString = mongo
-                                } else {
-                                        self.requestsMongoString = nil
-                                }
-                                if let graphURL: String = try? Environment.process.retrieve("MS_GRAPH_URL"), !graphURL.isEmpty {
-                                        self.msGraphURL = graphURL
-                                } else {
-                                        self.msGraphURL = nil
-                                }
+				self.sqlitePath = try? Environment.process.retrieve("SQLITE_PATH")
+				if let mongo: String = try? Environment.process.retrieve("REQUESTS_MONGO_STRING"), !mongo.isEmpty {
+					self.requestsMongoString = mongo
+				} else {
+					self.requestsMongoString = nil
+				}
+				self.msGraphURL = try Environment.process.retrieve("MS_GRAPH_URL")
+				self.msGraphTenantId = try Environment.process.retrieve("MS_GRAPH_TENANT_ID")
+				self.msGraphClientId = try Environment.process.retrieve("MS_GRAPH_CLIENT_ID")
+				self.msGraphClientSecret = try Environment.process.retrieve("MS_GRAPH_CLIENT_SECRET")
 
-                                if let tenant: String = try? Environment.process.retrieve("MS_GRAPH_TENANT_ID"), !tenant.isEmpty {
-                                        self.msGraphTenantId = tenant
-                                } else {
-                                        self.msGraphTenantId = nil
-                                }
-
-                                if let clientId: String = try? Environment.process.retrieve("MS_GRAPH_CLIENT_ID"), !clientId.isEmpty {
-                                        self.msGraphClientId = clientId
-                                } else {
-                                        self.msGraphClientId = nil
-                                }
-
-                                if let secret: String = try? Environment.process.retrieve("MS_GRAPH_CLIENT_SECRET"), !secret.isEmpty {
-                                        self.msGraphClientSecret = secret
-                                } else {
-                                        self.msGraphClientSecret = nil
-                                }
-
+				if let groups: String = try? Environment.process.retrieve("MS_GRAPH_GROUP_NAMES"), !groups.isEmpty {
+					self.msGraphGroupNames = groups.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+				} else {
+					self.msGraphGroupNames = []
+				}
 			} catch let error {
 				/// Build an error message and terminate on failure
 				let messageString = error.localizedDescription + "\n" + String(reflecting: error)

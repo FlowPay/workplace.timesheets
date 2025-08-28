@@ -16,7 +16,9 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/Worker" }
+                  "items": {
+                    "$ref": "#/components/schemas/Worker"
+                  }
                 }
               }
             }
@@ -29,7 +31,9 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/WorkerInput" }
+              "schema": {
+                "$ref": "#/components/schemas/WorkerInput"
+              }
             }
           }
         },
@@ -38,7 +42,9 @@
             "description": "Created",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Worker" }
+                "schema": {
+                  "$ref": "#/components/schemas/Worker"
+                }
               }
             }
           }
@@ -47,16 +53,32 @@
     },
     "/workers/{id}": {
       "parameters": [
-        { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       ],
       "get": {
         "summary": "Get worker",
         "responses": {
           "200": {
             "description": "Worker",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Worker" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Worker"
+                }
+              }
+            }
           },
-          "404": { "description": "Not found" }
+          "404": {
+            "description": "Not found"
+          }
         }
       },
       "put": {
@@ -64,29 +86,59 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/WorkerUpdate" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkerUpdate"
+              }
+            }
           }
         },
         "responses": {
           "200": {
             "description": "Updated",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Worker" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Worker"
+                }
+              }
+            }
           }
         }
       },
       "delete": {
         "summary": "Archive worker",
-        "responses": { "204": { "description": "Archived" } }
+        "responses": {
+          "204": {
+            "description": "Archived"
+          }
+        }
       }
     },
     "/workers/{id}/restore": {
       "post": {
         "summary": "Restore worker",
-        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Worker",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Worker" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Worker"
+                }
+              }
+            }
           }
         }
       }
@@ -94,13 +146,28 @@
     "/workers/{id}/time-entries": {
       "get": {
         "summary": "List time entries for worker",
-        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Array of time entries",
             "content": {
               "application/json": {
-                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TimeEntry" } }
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeEntry"
+                  }
+                }
               }
             }
           }
@@ -110,8 +177,21 @@
     "/sync/{teamId}": {
       "post": {
         "summary": "Synchronize workers, time entries and leaves from Microsoft Graph",
-        "parameters": [ { "name": "teamId", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "202": { "description": "Sync accepted" } }
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Sync accepted"
+          }
+        }
       }
     }
   },
@@ -120,52 +200,130 @@
       "Worker": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "employeeKey": { "type": "string" },
-          "fullName": { "type": "string" },
-          "team": { "type": "string", "nullable": true },
-          "role": { "type": "string", "nullable": true },
-          "archivedAt": { "type": "string", "format": "date-time", "nullable": true }
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "employeeKey": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
         },
-        "required": ["id", "employeeKey", "fullName"]
+        "required": [
+          "id",
+          "employeeKey",
+          "fullName"
+        ]
       },
       "WorkerInput": {
         "type": "object",
         "properties": {
-          "employeeKey": { "type": "string" },
-          "fullName": { "type": "string" },
-          "team": { "type": "string", "nullable": true },
-          "role": { "type": "string", "nullable": true }
+          "employeeKey": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          }
         },
-        "required": ["employeeKey", "fullName"]
+        "required": [
+          "employeeKey",
+          "fullName"
+        ]
       },
       "WorkerUpdate": {
         "type": "object",
         "properties": {
-          "employeeKey": { "type": "string", "nullable": true },
-          "fullName": { "type": "string", "nullable": true },
-          "team": { "type": "string", "nullable": true },
-          "role": { "type": "string", "nullable": true }
+          "employeeKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "team": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          }
         }
       },
       "TimeEntry": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "date": { "type": "string", "format": "date" },
-          "startAt": { "type": "string", "format": "date-time" },
-          "endAt": { "type": "string", "format": "date-time" },
-          "breaks": { "type": "array", "items": { "$ref": "#/components/schemas/Break" } }
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "breaks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Break"
+            }
+          }
         },
-        "required": ["id", "date", "startAt", "endAt", "breaks"]
+        "required": [
+          "id",
+          "date",
+          "startAt",
+          "endAt",
+          "breaks"
+        ]
       },
       "Break": {
         "type": "object",
         "properties": {
-          "startAt": { "type": "string", "format": "date-time" },
-          "endAt": { "type": "string", "format": "date-time" }
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         },
-        "required": ["startAt", "endAt"]
+        "required": [
+          "startAt",
+          "endAt"
+        ]
       }
     }
   }

@@ -58,9 +58,11 @@ sequenceDiagram
 | `SQLITE_PATH` | SQLite file path (tests) | `db.sqlite` |
 | `REQUESTS_MONGO_STRING` | Connection string for Mongo request logging | `null` |
 | `MS_GRAPH_URL` | Base URL of Microsoft Graph | `https://graph.microsoft.com/v1.0` |
-| `MS_GRAPH_TENANT_ID` | Azure AD tenant identifier | `null` |
-| `MS_GRAPH_CLIENT_ID` | Azure AD application client id | `null` |
-| `MS_GRAPH_CLIENT_SECRET` | Azure AD application client secret | `null` |
+| `MS_GRAPH_TENANT_ID` | Azure AD tenant identifier | required |
+| `MS_GRAPH_CLIENT_ID` | Azure AD application client id | required |
+| `MS_GRAPH_CLIENT_SECRET` | Azure AD application client secret | required |
+| `MS_GRAPH_GROUP_NAMES` | Comma separated Azure AD group names; members stay active, others are archived | `""` |
+| `MS_GRAPH_GROUP_IDS` | Comma separated Azure AD group IDs; only members are imported | `""` |
 
 ## Microsoft Graph Application Permissions
 The Azure AD application used for authentication must be granted the following
@@ -73,6 +75,11 @@ Microsoft Graph application permissions:
 
 Without these permissions the synchronization endpoints will not be able to
 fetch data from Microsoft Graph.
+
+### Sync windows and deletions
+- Default window for API sync (no parameters): last 30 days. You can override with query parameters `from` and `to` (ISO8601) or `days` (integer back from now).
+- Default window for scheduled job: last 7 days.
+- Reconciliation: time entries (shifts), breaks (via parent deletion) and leaves within the selected window are deleted locally if they no longer exist on Microsoft Graph.
 
 ## Development
 1. **Bootstrap**

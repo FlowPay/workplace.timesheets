@@ -20,14 +20,18 @@ public enum MicrosoftGraphScope {
 public protocol MicrosoftGraphClientProtocol {
     /// Retrieves all teams in the tenant (basic info).
     func listTeams(client: Client) async throws -> [GraphTeam]
+    /// Resolves Azure AD groups by display name (exact match).
+    func listGroupsByNames(_ names: [String], client: Client) async throws -> [GraphGroup]
+    /// Retrieves users that are members of the given Azure AD group.
+    func listGroupMembers(groupId: String, client: Client) async throws -> [GraphUser]
     /// Retrieves all users in the tenant.
     func listUsers(client: Client) async throws -> [GraphUser]
-    /// Retrieves shifts for a specific team.
-    func listShifts(teamId: String, client: Client) async throws -> [GraphShift]
-    /// Retrieves time cards for a specific team.
-    func listTimeCards(teamId: String, client: Client) async throws -> [GraphTimeCard]
-    /// Retrieves time off requests for a specific team.
-    func listTimeOffRequests(teamId: String, client: Client) async throws -> [GraphTimeOff]
+    /// Retrieves shifts for a specific team (optionally for a time window).
+    func listShifts(teamId: String, from: Date?, to: Date?, client: Client) async throws -> [GraphShift]
+    /// Retrieves time cards for a specific team (optionally for a time window).
+    func listTimeCards(teamId: String, from: Date?, to: Date?, client: Client) async throws -> [GraphTimeCard]
+    /// Retrieves time off requests for a specific team (optionally for a time window).
+    func listTimeOffRequests(teamId: String, from: Date?, to: Date?, client: Client) async throws -> [GraphTimeOff]
     /// Retrieves time off reasons for a specific team.
     func listTimeOffReasons(teamId: String, client: Client) async throws -> [GraphTimeOffReason]
 }
@@ -70,6 +74,26 @@ public struct MicrosoftGraphClient: MicrosoftGraphClientProtocol {
         return wrapper.value
     }
 
+    /// Returns groups whose displayName matches any of the provided names.
+    public func listGroupsByNames(_ names: [String], client: Client) async throws -> [GraphGroup] {
+        var result: [GraphGroup] = []
+        for name in names {
+            // Exact displayName match
+            let encoded = name.replacingOccurrences(of: "'", with: "''")
+            let path = "/groups?$filter=displayName eq '\(encoded)'&$select=id,displayName"
+            let wrapper: GraphListWrapper<GraphGroup> = try await get(path, client: client, as: GraphListWrapper<GraphGroup>.self)
+            result.append(contentsOf: wrapper.value)
+        }
+        return result
+    }
+
+    /// Returns basic members of a group (id, displayName)
+    public func listGroupMembers(groupId: String, client: Client) async throws -> [GraphUser] {
+        let path = "/groups/\(groupId)/members?$select=id,displayName"
+        let wrapper: GraphListWrapper<GraphUser> = try await get(path, client: client, as: GraphListWrapper<GraphUser>.self)
+        return wrapper.value
+    }
+
     /// Returns the list of users.
     public func listUsers(client: Client) async throws -> [GraphUser] {
         let wrapper: GraphListWrapper<GraphUser> = try await get("/users", client: client, as: GraphListWrapper<GraphUser>.self)
@@ -77,20 +101,23 @@ public struct MicrosoftGraphClient: MicrosoftGraphClientProtocol {
     }
 
     /// Returns the list of shifts for a team.
-    public func listShifts(teamId: String, client: Client) async throws -> [GraphShift] {
-        let wrapper: GraphListWrapper<GraphShift> = try await get("/teams/\(teamId)/schedule/shifts", client: client, as: GraphListWrapper<GraphShift>.self)
+    public func listShifts(teamId: String, from: Date?, to: Date?, client: Client) async throws -> [GraphShift] {
+        let query = Self.rangeQuery(from: from, to: to)
+        let wrapper: GraphListWrapper<GraphShift> = try await get("/teams/\(teamId)/schedule/shifts\(query)", client: client, as: GraphListWrapper<GraphShift>.self)
         return wrapper.value
     }
 
     /// Returns the list of time cards for a team.
-    public func listTimeCards(teamId: String, client: Client) async throws -> [GraphTimeCard] {
-        let wrapper: GraphListWrapper<GraphTimeCard> = try await get("/teams/\(teamId)/schedule/timeCards", client: client, as: GraphListWrapper<GraphTimeCard>.self)
+    public func listTimeCards(teamId: String, from: Date?, to: Date?, client: Client) async throws -> [GraphTimeCard] {
+        let query = Self.rangeQuery(from: from, to: to)
+        let wrapper: GraphListWrapper<GraphTimeCard> = try await get("/teams/\(teamId)/schedule/timeCards\(query)", client: client, as: GraphListWrapper<GraphTimeCard>.self)
         return wrapper.value
     }
 
     /// Returns the list of time off requests for a team.
-    public func listTimeOffRequests(teamId: String, client: Client) async throws -> [GraphTimeOff] {
-        let wrapper: GraphListWrapper<GraphTimeOff> = try await get("/teams/\(teamId)/schedule/timeOffRequests", client: client, as: GraphListWrapper<GraphTimeOff>.self)
+    public func listTimeOffRequests(teamId: String, from: Date?, to: Date?, client: Client) async throws -> [GraphTimeOff] {
+        let query = Self.rangeQuery(from: from, to: to)
+        let wrapper: GraphListWrapper<GraphTimeOff> = try await get("/teams/\(teamId)/schedule/timeOffRequests\(query)", client: client, as: GraphListWrapper<GraphTimeOff>.self)
         return wrapper.value
     }
 
@@ -101,6 +128,19 @@ public struct MicrosoftGraphClient: MicrosoftGraphClientProtocol {
     }
 }
 
+extension MicrosoftGraphClient {
+    /// Builds a query string for optional date range in RFC3339 format.
+    static func rangeQuery(from: Date?, to: Date?) -> String {
+        guard from != nil || to != nil else { return "" }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        var items: [String] = []
+        if let from { items.append("startDateTime=\(iso.string(from: from))") }
+        if let to { items.append("endDateTime=\(iso.string(from: to))") }
+        return "?" + items.joined(separator: "&")
+    }
+}
+
 /// Generic wrapper for Graph responses shaped as `{ "value": [...] }`.
 struct GraphListWrapper<T: Decodable>: Decodable {
     let value: [T]
@@ -108,6 +148,12 @@ struct GraphListWrapper<T: Decodable>: Decodable {
 
 /// Simplified Graph user representation.
 public struct GraphUser: Content {
+    public let id: String
+    public let displayName: String?
+}
+
+/// Simplified Graph group representation.
+public struct GraphGroup: Content {
     public let id: String
     public let displayName: String?
 }
