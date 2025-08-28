@@ -41,6 +41,7 @@ sequenceDiagram
 - `DELETE /workers/{id}` – archive a worker
 - `POST /workers/{id}/restore` – restore an archived worker
 - `GET /workers/{id}/time-entries` – list time entries for a worker
+- `POST /sync` – synchronize data from Microsoft Graph for all discovered Teams
 - `POST /sync/{teamId}` – synchronize data from Microsoft Graph for a team
 
 ## Environment Variables
