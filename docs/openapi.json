@@ -18,34 +18,24 @@
     "paths": {
         "/imports/timesheet": {
             "post": {
-                "summary": "Upload file Excel di timesheet (Shifts)",
-                "description": "Riceve un file Excel esportato da Microsoft Teams Shifts. Crea un ImportBatch in stato `queued` e avvia l'elaborazione asincrona. Il servizio **non** modifica mai i timestamp originali: le pause mal registrate sono derivate come entità *Pause* e associate ai turni con regola di overlap massimo.",
+                "summary": "Avvia l'import di un timesheet", 
+                "description": "Riceve l'identificativo del file Excel precedentemente caricato su aml.file. Crea un ImportBatch in stato `queued` e avvia l'elaborazione asincrona. Il servizio **non** modifica mai i timestamp originali: le pause mal registrate sono derivate come entità *Pause* e associate ai turni con regola di overlap massimo.",
                 "operationId": "uploadTimesheet",
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
                                 "type": "object",
                                 "properties": {
-                                    "file": {
+                                    "fileID": {
                                         "type": "string",
-                                        "format": "binary",
-                                        "description": "File Excel Shifts (.xlsx) — foglio atteso: ‘Report marcatempo finale’."
-                                    },
-                                    "filename": {
-                                        "type": "string",
-                                        "description": "Nome file da mostrare nel batch (opzionale).",
-                                        "x-faker": "system.fileName"
-                                    },
-                                    "uploadedBy": {
-                                        "type": "string",
-                                        "description": "Identificativo stringa dell'operatore/servizio che effettua l'upload (a fini di audit).",
-                                        "x-faker": "internet.userName"
+                                        "format": "uuid",
+                                        "description": "Identifier returned by aml.file for the uploaded spreadsheet."
                                     }
                                 },
                                 "required": [
-                                    "file"
+                                    "fileID"
                                 ]
                             }
                         }

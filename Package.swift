@@ -40,9 +40,19 @@ let package = Package(
                         ]
                 ),
                 .target(
+                        name: "Job",
+                        dependencies: [
+                                .target(name: "Core"),
+                                fluent,
+                                vapor,
+                                queues,
+                        ]
+                ),
+                .target(
                         name: "Api",
                         dependencies: [
                                 .target(name: "Core"),
+                                .target(name: "Job"),
                                 flowpayUtilities,
                                 vapor,
                                 queues,
@@ -57,6 +67,7 @@ let package = Package(
                         dependencies: [
                                 .target(name: "Api"),
                                 .target(name: "Core"),
+                                .target(name: "Job"),
                                 flowpayUtilities,
                                 fluent,
                                 mongodb,
@@ -83,6 +94,7 @@ let package = Package(
                                 "Api",
                                 "App",
                                 "Core",
+                                "Job",
                                 queues,
                         ],
                         resources: [

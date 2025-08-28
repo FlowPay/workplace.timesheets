@@ -1,7 +1,8 @@
 import Core
 import Fluent
-import Vapor
+import Job
 import Queues
+import Vapor
 
 /// Controller handling timesheet import operations
 public struct ImportController: RouteCollection {
@@ -16,26 +17,19 @@ public struct ImportController: RouteCollection {
 		}
 	}
 
-        /// Uploads a timesheet file and enqueues processing
-        func upload(request: Request) async throws -> Response {
+	/// Uploads a timesheet file and enqueues processing
+	func upload(request: Request) async throws -> Response {
                 let input = try request.content.decode(ImportBatchDTO.UploadInput.self)
                 try ImportBatchDTO.UploadInput.validate(content: request)
 
-                let batch = ImportBatch(filename: input.filename ?? input.file.filename, uploadedBy: input.uploadedBy)
-                try await batch.save(on: request.db)
+                // Create a new batch entry without additional metadata.
+                // The filename and uploader are intentionally omitted since
+                // the file is referenced via the external file service.
+                let batch = ImportBatch(filename: nil, uploadedBy: nil)
+		try await batch.save(on: request.db)
 
-                // Persist file on disk for later processing
-                var savedPath: String?
-                if let data = input.file.data.getData(at: 0, length: input.file.data.readableBytes) {
-                        let directory = request.application.directory.publicDirectory + "uploads/"
-                        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
-                        let path = directory + (batch.id?.uuidString ?? UUID().uuidString) + ".xlsx"
-                        try data.write(to: URL(fileURLWithPath: path))
-                        savedPath = path
-                }
-
-                // Launch background job if file was saved
-                if let path = savedPath, let id = batch.id {
+                // Launch background job using the provided file identifier
+                if let id = batch.id {
                         let context = QueueContext(
                                 queueName: .default,
                                 configuration: request.application.queues.configuration,
@@ -43,13 +37,13 @@ public struct ImportController: RouteCollection {
                                 logger: request.logger,
                                 on: request.eventLoop
                         )
-                        Task { try await TimesheetImportJob().dequeue(context, .init(batchID: id, path: path)) }
+                        Task { try await TimesheetImportJob().dequeue(context, .init(batchID: id, fileID: input.fileID)) }
                 }
 
-                let response = Response(status: .accepted)
-                try response.content.encode(batch, as: .json)
-                return response
-        }
+		let response = Response(status: .accepted)
+		try response.content.encode(batch, as: .json)
+		return response
+	}
 
 	/// Retrieves batch details
 	func detail(request: Request) async throws -> Response {

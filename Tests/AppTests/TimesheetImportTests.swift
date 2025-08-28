@@ -4,6 +4,7 @@ import XCTVapor
 @testable import Api
 @testable import App
 @testable import Core
+@testable import Job
 
 /// Tests for end-to-end timesheet import.
 final class TimesheetImportTests: BaseTestCase {
@@ -21,35 +22,30 @@ final class TimesheetImportTests: BaseTestCase {
 			.deletingLastPathComponent()
 			.appendingPathComponent("examples")
 		let fileURL = examples.appendingPathComponent("TimeSheetExport_2025-7-1_TO_2025-8-7_TEAM_7331a68b-6a8b-475f-9286-b78c42c78543_dd159988a3ba498991157759e26f5672.xlsx")
-		let data = try Data(contentsOf: fileURL)
-		let boundary = "Boundary-\(UUID().uuidString)"
-		var buffer = ByteBuffer()
-		buffer.writeString("--\(boundary)\r\n")
-		buffer.writeString("Content-Disposition: form-data; name=\"file\"; filename=\"test.xlsx\"\r\n")
-		buffer.writeString("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n\r\n")
-		buffer.writeBytes(data)
-		buffer.writeString("\r\n--\(boundary)--\r\n")
 
-		var batchID: UUID!
-		try app.test(
-			.POST,
-			"/imports/timesheet",
-			beforeRequest: { req in
-				req.headers.contentType = HTTPMediaType(type: "multipart", subType: "form-data", parameters: ["boundary": boundary])
-				req.body = .init(buffer: buffer)
-			},
-			afterResponse: { res in
-				XCTAssertEqual(res.status, .accepted)
-				let batch = try res.content.decode(ImportBatch.self)
-				batchID = try XCTUnwrap(batch.id)
-			}
-		)
+		// Register mock client returning the example file
+		app.amlFileClient = TestAmlFileClient(fileURL: fileURL)
+		let fileID = UUID()
 
-		// Execute job manually
-		let path = app.directory.publicDirectory + "uploads/\(batchID.uuidString).xlsx"
+                var batchID: UUID!
+                try app.test(
+                        .POST,
+                        "/imports/timesheet",
+                        beforeRequest: { req in
+                                // Only the file identifier is required by the API
+                                try req.content.encode(ImportBatchDTO.UploadInput(fileID: fileID))
+                        },
+                        afterResponse: { res in
+                                XCTAssertEqual(res.status, .accepted)
+                                let batch = try res.content.decode(ImportBatch.self)
+                                batchID = try XCTUnwrap(batch.id)
+                        }
+                )
+
+		// Execute job manually using the provided file identifier
 		let context = QueueContext(queueName: .default, configuration: app.queues.configuration, application: app, logger: app.logger, on: app.eventLoopGroup.next())
 		do {
-			try await TimesheetImportJob().dequeue(context, .init(batchID: batchID, path: path))
+			try await TimesheetImportJob().dequeue(context, .init(batchID: batchID, fileID: fileID))
 		} catch {
 			throw XCTSkip("Excel parsing unavailable: \(error)")
 		}

@@ -5,20 +5,23 @@ The Timesheet service imports working time data exported from **Microsoft Teams 
 
 - **Language/Framework**: Swift 5, Vapor 4, Fluent
 - **Persistence**: PostgreSQL in production, SQLite in tests
-- **Async processing**: Vapor `AsyncJob` parses spreadsheets after upload
+- **Async processing**: `Job` module hosts a Vapor `AsyncJob` that parses spreadsheets after upload
 - **OpenAPI**: see [`openapi.json`](openapi.json)
 
 ## Architecture
 ```mermaid
 sequenceDiagram
     participant UI as Backoffice UI
+    participant FILE as aml.file
     participant API as Timesheet API
     participant J as Import Job
     participant DB as Database
-    UI->>API: POST /imports/timesheet (file)
+    UI->>FILE: upload file
+    UI->>API: POST /imports/timesheet {fileID}
     API->>DB: INSERT ImportBatch(status=queued)
     API-->>UI: 202 Accepted {batchId}
-    API-->>J: enqueue(batchId, path)
+    API-->>J: enqueue(batchId, fileID)
+    J->>FILE: GET /files/{fileID}
     J->>DB: UPDATE ImportBatch(status=processing)
     J->>J: parse & normalize rows
     J->>DB: UPSERT Worker, TimeEntry, Break
@@ -34,9 +37,9 @@ sequenceDiagram
 | **ImportBatch** | Tracks upload status and processed row counters. |
 
 ## Import Workflow
-1. `POST /imports/timesheet` receives the Teams export.
-2. File is stored under `Public/uploads/<batchId>.xlsx` and an `ImportBatch` in state `queued` is created.
-3. `TimesheetImportJob` loads the spreadsheet via Python `openpyxl`, normalizes rows and persists workers, entries and breaks.
+1. The Backoffice uploads the Excel file to **aml.file** obtaining a `fileID`.
+2. `POST /imports/timesheet` sends the `fileID` and creates an `ImportBatch` in state `queued`.
+3. `TimesheetImportJob` retrieves the file from aml.file, parses it with Python `openpyxl`, normalizes rows and persists workers, entries and breaks.
 4. Batch counters (`rowsTotal`, `rowsOk`, `rowsError`) and status are updated.
 5. The batch status can be queried via `GET /imports/{batchId}`.
 
@@ -55,7 +58,7 @@ sequenceDiagram
 - `DELETE /workers/{id}` – archive a worker
 - `POST /workers/{id}/restore` – restore an archived worker
 - `GET /workers/{id}/time-entries` – list time entries for a worker
-- `POST /imports/timesheet` – upload a Teams Shifts export
+- `POST /imports/timesheet` – start import referencing a file stored on aml.file
 - `GET /imports/{batchId}` – get import batch status
 
 ## Environment Variables
@@ -70,6 +73,8 @@ sequenceDiagram
 | `DB_USERNAME` | Database user | `postgres` |
 | `DB_PASSWORD` | Database password | `postgres` |
 | `SQLITE_PATH` | SQLite file path (tests) | `db.sqlite` |
+| `REQUESTS_MONGO_STRING` | Connection string for Mongo request logging | `null` |
+| `FILE_SERVICE_URL` | Base URL of aml.file service | `http://aml-file` |
 
 ## Development
 1. **Bootstrap**

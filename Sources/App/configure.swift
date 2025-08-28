@@ -25,8 +25,8 @@ public func configure(_ app: Application) throws {
 	app.routes.defaultMaxBodySize = "10mb"
 	app.logger.logLevel = Configuration.shared.logLevel
 
-	/// Initialize database connections
-	try init_database(app: app)
+        /// Initialize database connections
+        try init_database(app: app)
 
 	/// Configure MongoDB logging if available
 	if let mongoString = Configuration.shared.requestsMongoString {
@@ -50,6 +50,14 @@ public func configure(_ app: Application) throws {
         /// Register routes
         try routes(app: app)
 
-        /// Output all registered routes for debugging
-        app.routes.all.forEach { print($0) }
+	/// Output all registered routes for debugging
+	app.routes.all.forEach { print($0) }
+
+        /// Configure external aml.file client using environment configuration
+        if let base = Configuration.shared.fileServiceURL {
+                // Register a live client that fetches files from the remote service
+                app.amlFileClient = LiveAmlFileClient(baseURL: base)
+        } else {
+                app.logger.warning("FILE_SERVICE_URL not set; aml.file client will not be available")
+        }
 }

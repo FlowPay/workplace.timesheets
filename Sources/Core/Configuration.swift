@@ -39,8 +39,10 @@ extension Application {
 		public let dbName: String
 		/// Optional path to a SQLite database file
 		public let sqlitePath: String?
-		/// Optional connection string for request logging database
-		public let requestsMongoString: String?
+                /// Optional connection string for request logging database
+                public let requestsMongoString: String?
+                /// Optional base URL for the external file service
+                public let fileServiceURL: String?
 
 		/// Initialize configuration by reading environment values
 		init() {
@@ -54,11 +56,16 @@ extension Application {
 				self.dbHostname = try Environment.process.retrieve("DB_HOSTNAME")
 				self.dbPort = try Environment.process.retrieve("DB_PORT")
 				self.dbName = try Environment.process.retrieve("DB_SCHEMA")
-				self.sqlitePath = try? Environment.process.retrieve("SQLITE_PATH")
+                                self.sqlitePath = try? Environment.process.retrieve("SQLITE_PATH")
                                 if let mongo: String = try? Environment.process.retrieve("REQUESTS_MONGO_STRING"), !mongo.isEmpty {
                                         self.requestsMongoString = mongo
                                 } else {
                                         self.requestsMongoString = nil
+                                }
+                                if let fileURL: String = try? Environment.process.retrieve("FILE_SERVICE_URL"), !fileURL.isEmpty {
+                                        self.fileServiceURL = fileURL
+                                } else {
+                                        self.fileServiceURL = nil
                                 }
 
 			} catch let error {
