@@ -59,12 +59,38 @@ struct LAB7: AsyncMigration {
 			.field("updated_at", .datetime)
 			.unique(on: "graph_id")
 			.create()
+
+		// planned_shifts table
+		try await database.schema("planned_shifts")
+			.id()
+			.field("worker_id", .uuid, .required, .references("workers", "id"))
+			.field("graph_id", .string, .required)
+			.field("date", .date, .required)
+			.field("start_at", .datetime, .required)
+			.field("end_at", .datetime, .required)
+			.field("created_at", .datetime)
+			.field("updated_at", .datetime)
+			.unique(on: "graph_id")
+			.create()
+
+		// planned_breaks table
+		try await database.schema("planned_breaks")
+			.id()
+			.field("planned_shift_id", .uuid, .required, .references("planned_shifts", "id", onDelete: .cascade))
+			.field("worker_id", .uuid, .required, .references("workers", "id", onDelete: .cascade))
+			.field("start_at", .datetime, .required)
+			.field("end_at", .datetime, .required)
+			.field("created_at", .datetime)
+			.field("updated_at", .datetime)
+			.create()
 	}
 
 	/// Revert all tables
 	func revert(on database: Database) async throws {
 		try await database.schema("breaks").delete()
 		try await database.schema("leaves").delete()
+		try await database.schema("planned_breaks").delete()
+		try await database.schema("planned_shifts").delete()
 		try await database.schema("time_entries").delete()
 		try await database.schema("workers").delete()
 	}

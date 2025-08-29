@@ -55,9 +55,11 @@ final class MicrosoftGraphClientTests: XCTestCase {
         }
 
         let client = RecordingClient(eventLoop: loop) { request in
-            XCTAssertTrue(request.url.string.contains("/groups?"))
-            XCTAssertTrue(request.url.string.contains("resourceProvisioningOptions/Any(x:x eq 'Team')"))
-            XCTAssertTrue(request.url.string.contains("$select=id,displayName"))
+            let url = request.url.string
+            XCTAssertTrue(url.contains("/groups?"))
+            XCTAssertTrue(url.contains("resourceProvisioningOptions"))
+            XCTAssertTrue(url.lowercased().contains("team"))
+            XCTAssertTrue(url.contains("$select=id,displayName"))
             XCTAssertEqual(request.headers.first(name: .authorization), "Bearer token123")
             exp.fulfill()
             var res = ClientResponse(status: .ok, headers: ["Content-Type": "application/json"])

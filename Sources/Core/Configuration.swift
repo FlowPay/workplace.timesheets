@@ -52,6 +52,8 @@ extension Application {
 		// Teams are auto-discovered via Graph
 		/// Optional list of Azure AD group names; when provided, only members are considered active
 		public let msGraphGroupNames: [String]
+		/// Optional list of Microsoft Teams display names to limit sync scope
+		public let msGraphTeamNames: [String]
 
 		/// Initialize configuration by reading environment values
 		init() {
@@ -80,6 +82,12 @@ extension Application {
 					self.msGraphGroupNames = groups.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
 				} else {
 					self.msGraphGroupNames = []
+				}
+
+				if let teamNames: String = try? Environment.process.retrieve("MS_GRAPH_TEAM_NAMES"), !teamNames.isEmpty {
+					self.msGraphTeamNames = teamNames.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+				} else {
+					self.msGraphTeamNames = []
 				}
 			} catch let error {
 				/// Build an error message and terminate on failure

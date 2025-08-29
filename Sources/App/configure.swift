@@ -48,19 +48,24 @@ public func configure(_ app: Application) throws {
 	app.middleware.use(DatabaseMiddleware())
 	app.middleware.use(ErrorResponseMiddleware())
 
-        /// Register routes
-        try routes(app: app)
+	/// Register routes
+	try routes(app: app)
 
-        /// Output all registered routes for debugging
-        app.routes.all.forEach { print($0) }
+	/// Output all registered routes for debugging
+	app.routes.all.forEach { print($0) }
 
-        /// Configure Microsoft Graph client using OAuth2 client credentials (required)
-        let provider = ClientCredentialsTokenProvider(tenantId: Configuration.shared.msGraphTenantId,
-                                                      clientId: Configuration.shared.msGraphClientId,
-                                                      clientSecret: Configuration.shared.msGraphClientSecret)
-        app.graphClient = MicrosoftGraphClient(baseURL: Configuration.shared.msGraphURL, tokenProvider: provider)
+	/// Configure Microsoft Graph client using OAuth2 client credentials (required)
+	let provider = ClientCredentialsTokenProvider(
+		tenantId: Configuration.shared.msGraphTenantId,
+		clientId: Configuration.shared.msGraphClientId,
+		clientSecret: Configuration.shared.msGraphClientSecret
+	)
 
-        /// Schedule periodic synchronization using an in-process job
-        app.queues.schedule(GraphSyncJob()).hourly().at(0)
-        try app.queues.startScheduledJobs()
+	app.setupProxy()
+	
+	app.graphClient = MicrosoftGraphClient(baseURL: Configuration.shared.msGraphURL, tokenProvider: provider)
+
+	/// Schedule periodic synchronization using an in-process job
+	app.queues.schedule(GraphSyncJob()).hourly().at(0)
+	try app.queues.startScheduledJobs()
 }
