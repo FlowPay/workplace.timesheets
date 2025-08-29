@@ -16,8 +16,9 @@ extension PlannedShift {
 		prune: Bool = true,
 		on db: Database
 	) async throws -> (Int, Int, Int) {
-		let remoteIDs = Set(shifts.map { $0.id })
-		let workersMap = try Dictionary(uniqueKeysWithValues: workers.map { (try $0.requireID(), $0) })
+        let remoteIDs = Set(shifts.map { $0.id })
+        // Map workers by Graph user id (employeeKey holds Graph user id string)
+        let workersByGraphId = Dictionary(uniqueKeysWithValues: workers.map { ($0.employeeKey.lowercased(), $0) })
 		let allDBShifts = try await PlannedShift.query(on: db).with(\.$breaks).all()
 			.reduce(into: [:]) { partial, shift in
 				partial[shift.graphID] = shift
@@ -37,7 +38,8 @@ extension PlannedShift {
 			let start = sharedShift.startDateTime
 			let end = sharedShift.endDateTime
 
-			guard let worker = workersMap[userId] else { continue }
+            let graphUserId = userId.uuidString.lowercased()
+            guard let worker = workersByGraphId[graphUserId] else { continue }
 
 			guard let planned = allDBShifts[shift.id] else {
 
@@ -87,31 +89,28 @@ extension PlannedShift {
 				updated += 1
 			}
 
-			//TODO: Optimize this chaos
-			// Reconcile breaks (now leveraging Hashable/Equatable)
-			let remoteBreaks: Set<GraphShift.Activity> = Set(sharedShift.activities ?? [])
+            // Reconcile breaks (unpaid activities only); compare by start/end pair
+            let remoteBreaks: Set<GraphShift.Activity> = Set((sharedShift.activities ?? []).filter { !$0.isPaid })
 
-			let currentBreaks = try await planned.$breaks.query(on: db).all()
-			let currentSet: Set<GraphShift.Activity> = Set(currentBreaks.map { GraphShift.Activity(startDate: $0.startAt, endDate: $0.endAt, isPaid: false) })
+            let currentBreaks = try await planned.$breaks.query(on: db).all()
+            let currentSet: Set<GraphShift.Activity> = Set(currentBreaks.map { GraphShift.Activity(startDate: $0.startAt, endDate: $0.endAt, isPaid: false) })
 
-			// Delete breaks that no longer exist remotely
-			for br in currentBreaks where !remoteBreaks.contains(GraphShift.Activity(startDate: br.startAt, endDate: br.endAt, isPaid: false)) {
-				try await br.delete(on: db)
-			}
+            // Delete breaks that no longer exist remotely
+            for br in currentBreaks where !remoteBreaks.contains(GraphShift.Activity(startDate: br.startAt, endDate: br.endAt, isPaid: false)) {
+                try await br.delete(on: db)
+            }
 
-			// Create breaks that are present remotely but missing locally
-			try await currentSet.filter { !remoteBreaks.contains($0) }
-				.compactMap { remoteBreak -> PlannedBreak? in
-					guard !remoteBreak.isPaid else { return nil }
-
-					return try PlannedBreak(
-						plannedShiftID: planned.requireID(),
-						workerID: worker.requireID(),
-						start: remoteBreak.startDateTime,
-						end: remoteBreak.endDateTime
-					)
-				}
-				.create(on: db)
+            // Create breaks that are present remotely but missing locally
+            try await remoteBreaks.filter { !currentSet.contains($0) }
+                .map { remoteBreak in
+                    try PlannedBreak(
+                        plannedShiftID: planned.requireID(),
+                        workerID: worker.requireID(),
+                        start: remoteBreak.startDateTime,
+                        end: remoteBreak.endDateTime
+                    )
+                }
+                .create(on: db)
 
 		}
 

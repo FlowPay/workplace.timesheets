@@ -1,6 +1,7 @@
 import Core
 import Fluent
 import Foundation
+import SQLKit
 import Vapor
 
 /// Creates core tables for timesheet management.
@@ -41,10 +42,12 @@ struct LAB7: AsyncMigration {
 			.id()
 			.field("time_entry_id", .uuid, .required, .references("time_entries", "id", onDelete: .cascade))
 			.field("worker_id", .uuid, .required, .references("workers", "id", onDelete: .cascade))
+			.field("graph_id", .string, .required)
 			.field("start_at", .datetime, .required)
 			.field("end_at", .datetime, .required)
 			.field("created_at", .datetime)
 			.field("updated_at", .datetime)
+			.unique(on: "graph_id")
 			.create()
 
 		// leaves table
@@ -83,6 +86,31 @@ struct LAB7: AsyncMigration {
 			.field("created_at", .datetime)
 			.field("updated_at", .datetime)
 			.create()
+
+		// Add helpful indexes via raw SQL
+		if let sql = database as? SQLDatabase {
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS workers_employee_key_idx ON workers (employee_key);").run()
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS workers_full_name_idx ON workers (full_name);").run()
+
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS time_entries_worker_id_idx ON time_entries (worker_id);").run()
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS time_entries_date_idx ON time_entries (date);").run()
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS time_entries_start_at_idx ON time_entries (start_at);").run()
+
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS breaks_time_entry_id_idx ON breaks (time_entry_id);").run()
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS breaks_worker_id_idx ON breaks (worker_id);").run()
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS breaks_start_at_idx ON breaks (start_at);").run()
+
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS leaves_worker_id_idx ON leaves (worker_id);").run()
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS leaves_start_at_idx ON leaves (start_at);").run()
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS leaves_end_at_idx ON leaves (end_at);").run()
+
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS planned_shifts_worker_id_idx ON planned_shifts (worker_id);").run()
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS planned_shifts_date_idx ON planned_shifts (date);").run()
+
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS planned_breaks_planned_shift_id_idx ON planned_breaks (planned_shift_id);").run()
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS planned_breaks_worker_id_idx ON planned_breaks (worker_id);").run()
+			try? await sql.raw("CREATE INDEX IF NOT EXISTS planned_breaks_start_at_idx ON planned_breaks (start_at);").run()
+		}
 	}
 
 	/// Revert all tables

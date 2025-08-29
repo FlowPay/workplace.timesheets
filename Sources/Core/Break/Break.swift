@@ -16,6 +16,9 @@ public final class Break: Model, Content {
 	/// Worker reference for convenience
 	@Parent(key: "worker_id") public var worker: Worker
 
+    /// Identifier of the corresponding break on Microsoft Graph
+    @Field(key: "graph_id") public var graphID: String
+
 	/// Break start timestamp
 	@Field(key: "start_at") public var startAt: Date
 
@@ -35,12 +38,14 @@ public final class Break: Model, Content {
 	/// - Parameters:
 	///   - timeEntryID: Related time entry identifier
 	///   - workerID: Worker identifier
-	///   - startAt: Break start
-	///   - endAt: Break end
-	public init(timeEntryID: UUID, workerID: UUID, startAt: Date, endAt: Date) {
-		self.$timeEntry.id = timeEntryID
-		self.$worker.id = workerID
-		self.startAt = startAt
-		self.endAt = endAt
-	}
+    ///   - graphID: External break identifier from Microsoft Graph
+    ///   - startAt: Break start
+    ///   - endAt: Break end
+    public init(timeEntryID: UUID, workerID: UUID, graphID: String, startAt: Date, endAt: Date) {
+        self.$timeEntry.id = timeEntryID
+        self.$worker.id = workerID
+        self.graphID = graphID
+        self.startAt = startAt
+        self.endAt = endAt
+    }
 }
