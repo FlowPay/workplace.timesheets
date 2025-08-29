@@ -84,8 +84,8 @@ public struct WorkerController: RouteCollection {
         let input = try request.content.decode(Worker.Update.self)
         try Worker.Update.validate(content: request)
 
-        let db = request.transactionalDB
-        guard let worker = try await Worker.find(id, on: db) else {
+        let db = request.db
+        guard let worker = try await Worker.query(on: db).withDeleted().filter(\.$id == id).first() else {
             throw Abort(.notFound, reason: "Worker not found")
         }
 
@@ -115,20 +115,23 @@ public struct WorkerController: RouteCollection {
         guard let worker = try await Worker.find(id, on: db) else {
             throw Abort(.notFound, reason: "Worker not found")
         }
-        worker.archivedAt = Date()
-        try await worker.save(on: db)
+        try await worker.delete(on: db)
         return Response(status: .noContent)
     }
 
     /// Restore an archived worker
     func restore(request: Request) async throws -> Response {
         let id: UUID = try request.parameters.require("id")
-        let db = request.transactionalDB
+        let db = request.db
+        // Include soft-deleted rows and clear archivedAt via update
+        try await Worker.query(on: db)
+            .withDeleted()
+            .filter(\.$id == id)
+            .set(\.$archivedAt, to: nil)
+            .update()
         guard let worker = try await Worker.find(id, on: db) else {
             throw Abort(.notFound, reason: "Worker not found")
         }
-        worker.archivedAt = nil
-        try await worker.save(on: db)
         let output = try Worker.Output(worker: worker)
         return try await output.encodeResponse(for: request)
     }

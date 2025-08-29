@@ -17,9 +17,10 @@ extension Leave {
 		prune: Bool = true,
 		on db: Database
 	) async throws {
-		let reasonMap = Dictionary(uniqueKeysWithValues: reasons.map { ($0.id, $0.displayName) })
-		let remoteIDs = Set(offs.map { $0.id })
-		let workersMap = try Dictionary(uniqueKeysWithValues: workers.map { (try $0.requireID(), $0) })
+        let reasonMap = Dictionary(uniqueKeysWithValues: reasons.map { ($0.id, $0.displayName) })
+        let remoteIDs = Set(offs.map { $0.id })
+        // Map workers by Graph user id (employeeKey holds Graph user id string)
+        let workersByGraphId = Dictionary(uniqueKeysWithValues: workers.map { ($0.employeeKey.lowercased(), $0) })
 
 		let allDBLeaves = try await Leave.query(on: db).all()
 			.reduce(into: [:]) { partial, leave in
@@ -27,8 +28,9 @@ extension Leave {
 			}
 
 		var leavesToAdd: [Leave] = []
-		for off in offs {
-			guard let worker = workersMap[off.userId] else { continue }
+        for off in offs {
+            let graphUserId = off.userId.uuidString.lowercased()
+            guard let worker = workersByGraphId[graphUserId] else { continue }
 
 			let reason = off.timeOffReasonId.flatMap { reasonMap[$0] } ?? "unknown"
 

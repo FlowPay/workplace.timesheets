@@ -24,7 +24,9 @@ final class MicrosoftGraphClientTests: XCTestCase {
         }
 
         let client = RecordingClient(eventLoop: loop) { request in
-            XCTAssertEqual(request.url.string, "https://graph.example/users")
+            let url = request.url.string
+            XCTAssertTrue(url.hasPrefix("https://graph.example/users"))
+            XCTAssertTrue(url.contains("$select=id,displayName"))
             XCTAssertEqual(request.headers.first(name: .authorization), "Bearer token123")
             exp.fulfill()
             var res = ClientResponse(status: .ok, headers: ["Content-Type": "application/json"])
@@ -33,7 +35,7 @@ final class MicrosoftGraphClientTests: XCTestCase {
         }
 
         _ = try await graph.listUsers(client: client)
-        await waitForExpectations(timeout: 1.0)
+        await fulfillment(of: [exp], timeout: 1.0)
     }
 
     /// Ensures listTeams uses the groups filter for Teams.
@@ -54,6 +56,7 @@ final class MicrosoftGraphClientTests: XCTestCase {
             func allocating(to byteBufferAllocator: ByteBufferAllocator) -> Client { self }
         }
 
+        let expectedId = "00000000-0000-0000-0000-0000000000aa"
         let client = RecordingClient(eventLoop: loop) { request in
             let url = request.url.string
             XCTAssertTrue(url.contains("/groups?"))
@@ -63,12 +66,12 @@ final class MicrosoftGraphClientTests: XCTestCase {
             XCTAssertEqual(request.headers.first(name: .authorization), "Bearer token123")
             exp.fulfill()
             var res = ClientResponse(status: .ok, headers: ["Content-Type": "application/json"])
-            res.body = .init(string: "{\"value\":[{\"id\":\"t1\",\"displayName\":\"Team A\"}]}")
+            res.body = .init(string: "{\"value\":[{\"id\":\"\(expectedId)\",\"displayName\":\"Team A\"}]}")
             return loop.makeSucceededFuture(res)
         }
 
         let teams = try await graph.listTeams(client: client)
-        XCTAssertEqual(teams.first?.id, "t1")
-        await waitForExpectations(timeout: 1.0)
+        XCTAssertEqual(teams.first?.id.uuidString.lowercased(), expectedId)
+        await fulfillment(of: [exp], timeout: 1.0)
     }
 }

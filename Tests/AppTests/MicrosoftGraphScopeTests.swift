@@ -9,7 +9,8 @@ final class MicrosoftGraphScopeTests: XCTestCase {
             "User.Read.All",
             "Group.Read.All",
             "Schedule.Read.All",
-            "Presence.Read.All"
+            "Presence.Read.All",
+            "Team.ReadBasic.All"
         ]
         XCTAssertEqual(Set(MicrosoftGraphScope.required), expected)
     }

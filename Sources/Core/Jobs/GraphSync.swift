@@ -82,13 +82,13 @@ extension GraphSyncJob {
 				env.logger.debug("Fetching team shifts")
 				let graphShifts = try await env.graphClient.listShifts(teamId: team.id, from: from, to: to, client: env.client)
 				env.logger.debug("Found \(graphShifts.count) shifts. Upserting...")
-				let plannedShiftResults = try await PlannedShift.upsert(from: graphShifts, workers: workers, on: env.db)
+                let plannedShiftResults = try await PlannedShift.upsert(from: graphShifts, workers: workers, prune: false, on: env.db)
 				env.logger.info("Planned shifts upserted: \(plannedShiftResults.1) inserted, \(plannedShiftResults.0) updated, \(plannedShiftResults.2) deleted")
 
 				env.logger.debug("Fetching team time cards")
 				let graphTimeCards = try await env.graphClient.listTimeCards(teamId: team.id, from: from, to: to, client: env.client)
 				env.logger.debug("Found \(graphTimeCards.count) time cards. Upserting...")
-				let timeEntryResults = try await TimeEntry.upsert(from: graphTimeCards, workers: workers, on: env.db)
+                let timeEntryResults = try await TimeEntry.upsert(from: graphTimeCards, workers: workers, prune: false, on: env.db)
 				env.logger.info("Time entries upserted: \(timeEntryResults.1) inserted, \(timeEntryResults.0) updated, \(timeEntryResults.2) deleted")
 
 				env.logger.debug("Fetching team time off requests and reasons")
@@ -98,7 +98,7 @@ extension GraphSyncJob {
 				env.logger.debug("Found \(listTimeOffRequests.count) time off requests.")
 
 				env.logger.debug("Upserting time off requests")
-				try await Leave.upsert(from: listTimeOffRequests, reasons: listTimeOffReasons, workers: workers, on: env.db)
+                try await Leave.upsert(from: listTimeOffRequests, reasons: listTimeOffReasons, workers: workers, prune: false, on: env.db)
 
 			} catch {
 				env.logger.error("Error syncing team \(team.id): \(error.localizedDescription)")
