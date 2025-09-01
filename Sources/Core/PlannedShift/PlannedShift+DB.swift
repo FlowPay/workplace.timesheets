@@ -16,13 +16,13 @@ extension PlannedShift {
 		prune: Bool = true,
 		on db: Database
 	) async throws -> (Int, Int, Int) {
-        let remoteIDs = Set(shifts.map { $0.id })
+		let remoteIDs = Set(shifts.map { $0.id })
 		// Map workers by Graph user id (employeeKey holds Graph user id string)
-        let workersByGraphId = Dictionary(uniqueKeysWithValues: workers.map { ($0.employeeKey.lowercased(), $0) })
-        var allDBShifts = try await PlannedShift.query(on: db).with(\.$breaks).all()
-            .reduce(into: [:]) { partial, shift in
-                partial[shift.graphID] = shift
-            }
+		let workersByGraphId = try Dictionary(uniqueKeysWithValues: workers.map { (try $0.requireID(), $0) })
+		var allDBShifts = try await PlannedShift.query(on: db).with(\.$breaks).all()
+			.reduce(into: [:]) { partial, shift in
+				partial[shift.graphID] = shift
+			}
 
 		var updated: Int = 0
 		var inserted: Int = 0
@@ -35,28 +35,27 @@ extension PlannedShift {
 				let userId = shift.userId
 			else { continue }
 
-            let start = sharedShift.startDateTime
-            let end = sharedShift.endDateTime
-            let displayName = sharedShift.displayName
+			let start = sharedShift.startDateTime
+			let end = sharedShift.endDateTime
+			let displayName = sharedShift.displayName
 
-			let graphUserId = userId.uuidString.lowercased()
-			guard let worker = workersByGraphId[graphUserId] else { continue }
+			guard let worker = workersByGraphId[userId] else { continue }
 
 			guard let planned = allDBShifts[shift.id] else {
 
 				// Create new planned shift
-                let planned = PlannedShift(
-                    workerID: try worker.requireID(),
-                    graphID: shift.id,
-                    date: start,
-                    startAt: start,
-                    endAt: end,
-                    name: displayName
-                )
-                try await planned.create(on: db)
-                inserted += 1
-                // Track newly created to avoid duplicate inserts
-                allDBShifts[shift.id] = planned
+				let planned = PlannedShift(
+					workerID: try worker.requireID(),
+					graphID: shift.id,
+					date: start,
+					startAt: start,
+					endAt: end,
+					name: displayName
+				)
+				try await planned.create(on: db)
+				inserted += 1
+				// Track newly created to avoid duplicate inserts
+				allDBShifts[shift.id] = planned
 
 				// Create breaks for the new planned shift
 				try await sharedShift.activities?.compactMap { activity -> PlannedBreak? in
@@ -83,14 +82,14 @@ extension PlannedShift {
 				planned.startAt = start
 				needsSave = true
 			}
-            if planned.endAt != end {
-                planned.endAt = end
-                needsSave = true
-            }
-            if planned.name != displayName {
-                planned.name = displayName
-                needsSave = true
-            }
+			if planned.endAt != end {
+				planned.endAt = end
+				needsSave = true
+			}
+			if planned.name != displayName {
+				planned.name = displayName
+				needsSave = true
+			}
 
 			if needsSave {
 				try await planned.save(on: db)

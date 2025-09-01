@@ -46,7 +46,7 @@ public func configure(_ app: Application) throws {
 	/// Register middlewares
 	app.middleware.use(RouteLoggingMiddleware.init(logLevel: .info))
 	app.middleware.use(DatabaseMiddleware())
-	app.middleware.use(ErrorResponseMiddleware())
+	app.middleware.use(ErrorMiddleware.default(environment: app.environment))
 
 	/// Register routes
 	try routes(app: app)
@@ -62,7 +62,7 @@ public func configure(_ app: Application) throws {
 	)
 
 	app.setupProxy()
-	
+
 	app.graphClient = MicrosoftGraphClient(baseURL: Configuration.shared.msGraphURL, tokenProvider: provider)
 
 	/// Schedule periodic synchronization using an in-process job

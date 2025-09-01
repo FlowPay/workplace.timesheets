@@ -1,7 +1,7 @@
 import Vapor
 
 public struct GraphUser: Content {
-	public let id: String
+	public let id: UUID
 	public let displayName: String?
 	public let mail: String?
 	public let accountEnabled: Bool

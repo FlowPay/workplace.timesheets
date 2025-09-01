@@ -14,15 +14,13 @@ struct LAB7: AsyncMigration {
 		// workers table
 		try await database.schema("workers")
 			.id()
-			.field("employee_key", .string, .required)
-			.field("full_name", .string, .required)
+			.field("full_name", .string)
 			.field("email", .string)
 			.field("team", .string)
 			.field("role", .string)
 			.field("archived_at", .datetime)
 			.field("created_at", .datetime)
 			.field("updated_at", .datetime)
-			.unique(on: "employee_key")
 			.create()
 
 		// time_entries table
@@ -91,7 +89,6 @@ struct LAB7: AsyncMigration {
 
 		// Add helpful indexes via raw SQL
 		if let sql = database as? SQLDatabase {
-			try? await sql.raw("CREATE INDEX IF NOT EXISTS workers_employee_key_idx ON workers (employee_key);").run()
 			try? await sql.raw("CREATE INDEX IF NOT EXISTS workers_full_name_idx ON workers (full_name);").run()
 
 			// Ensure columns exist when migrating on pre-existing databases
