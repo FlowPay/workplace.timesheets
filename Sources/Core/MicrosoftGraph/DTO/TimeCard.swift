@@ -33,10 +33,33 @@ public struct GraphTimeCard: Content, Identifiable, Hashable {
 
 	}
 
-	public struct DatetimeEvent: Content {
-		public let dateTime: Date
-		public let isAtApprovedLocation: Bool
-		public let notes: String?
-	}
+    public struct DatetimeEvent: Content {
+        public let dateTime: Date
+        public let isAtApprovedLocation: Bool?
+        public let notes: String?
+
+        public init(dateTime: Date, isAtApprovedLocation: Bool?, notes: String?) {
+            self.dateTime = dateTime
+            self.isAtApprovedLocation = isAtApprovedLocation
+            self.notes = notes
+        }
+
+        enum CodingKeys: String, CodingKey { case dateTime, isAtApprovedLocation, notes }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.dateTime = try c.decode(Date.self, forKey: .dateTime)
+            if let b = try? c.decode(Bool.self, forKey: .isAtApprovedLocation) {
+                self.isAtApprovedLocation = b
+            } else if let s = try? c.decode(String.self, forKey: .isAtApprovedLocation) {
+                self.isAtApprovedLocation = (s as NSString).boolValue
+            } else if (try? c.decodeNil(forKey: .isAtApprovedLocation)) == true {
+                self.isAtApprovedLocation = nil
+            } else {
+                self.isAtApprovedLocation = nil
+            }
+            self.notes = try? c.decode(String.self, forKey: .notes)
+        }
+    }
 
 }

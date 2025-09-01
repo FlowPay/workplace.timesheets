@@ -13,8 +13,11 @@ public final class Worker: Model, Content {
 	/// External employee key (email, UPN or employee code)
 	@Field(key: "employee_key") public var employeeKey: String
 
-	/// Full name of the employee
-	@Field(key: "full_name") public var fullName: String
+    /// Full name of the employee
+    @Field(key: "full_name") public var fullName: String
+
+    /// Optional email address
+    @OptionalField(key: "email") public var email: String?
 
 	/// Optional team reference
 	@OptionalField(key: "team") public var team: String?
@@ -40,10 +43,11 @@ public final class Worker: Model, Content {
 	///   - fullName: Full name of the employee
 	///   - team: Optional team
 	///   - role: Optional role
-	public init(employeeKey: String, fullName: String, team: String? = nil, role: String? = nil) {
-		self.employeeKey = employeeKey
-		self.fullName = fullName
-		self.team = team
-		self.role = role
-	}
+    public init(employeeKey: String, fullName: String, email: String? = nil, team: String? = nil, role: String? = nil) {
+        self.employeeKey = employeeKey
+        self.fullName = fullName
+        self.email = email
+        self.team = team
+        self.role = role
+    }
 }

@@ -19,14 +19,19 @@ extension Worker {
 
 			if let user = usersMap[worker.employeeKey] {
 				// Existing worker, update name if changed
-				if worker.fullName != (user.displayName ?? worker.fullName) {
-					worker.fullName = user.displayName ?? worker.fullName
-				}
+            if worker.fullName != (user.displayName ?? worker.fullName) {
+                worker.fullName = user.displayName ?? worker.fullName
+            }
+            if worker.email != user.mail { worker.email = user.mail }
 
-				// Un-archive if now allowed
-				if !user.isActive && worker.archivedAt != nil {
-					worker.archivedAt = nil
-				}
+            // Archive or unarchive based on current user activity
+            if user.isActive {
+                // Ensure active users are not archived
+                if worker.archivedAt != nil { worker.archivedAt = nil }
+            } else {
+                // Inactive users should be archived
+                if worker.archivedAt == nil { worker.archivedAt = Date() }
+            }
 
 				usersMap.removeValue(forKey: worker.employeeKey)
 			} else {
@@ -37,10 +42,10 @@ extension Worker {
 			try await worker.save(on: db)
 		}
 
-		let newWorkers: [Worker] = usersMap.values.compactMap { user in
-			guard user.isActive else { return nil }
-			return Worker(employeeKey: user.id, fullName: user.displayName ?? "")
-		}
+        let newWorkers: [Worker] = usersMap.values.compactMap { user in
+            guard user.isActive else { return nil }
+            return Worker(employeeKey: user.id, fullName: user.displayName ?? "", email: user.mail)
+        }
 
 		try await newWorkers.create(on: db)
 

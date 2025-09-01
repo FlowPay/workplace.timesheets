@@ -16,6 +16,9 @@ public final class PlannedShift: Model, Content {
     /// Identifier of the corresponding shift on Microsoft Graph
     @Field(key: "graph_id") public var graphID: String
 
+    /// Display name of the shift (from Graph sharedShift.displayName)
+    @OptionalField(key: "name") public var name: String?
+
     /// Day of the shift
     @Field(key: "date") public var date: Date
 
@@ -44,12 +47,13 @@ public final class PlannedShift: Model, Content {
     ///   - date: Day of the shift
     ///   - startAt: Planned start timestamp
     ///   - endAt: Planned end timestamp
-    public init(workerID: UUID, graphID: String, date: Date, startAt: Date, endAt: Date) {
+    public init(workerID: UUID, graphID: String, date: Date, startAt: Date, endAt: Date, name: String? = nil) {
         self.$worker.id = workerID
         self.graphID = graphID
         self.date = date
         self.startAt = startAt
         self.endAt = endAt
+        self.name = name
     }
 }
 

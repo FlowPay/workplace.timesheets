@@ -9,13 +9,14 @@ extension TimeEntry {
 	///   - workers: Map of Graph userId to persisted Worker
 	///   - window: Optional date window used for pruning (by `date` field)
 	///   - db: Database
-	public static func upsert(
-		from cards: [GraphTimeCard],
-		workers: [Worker],
-		prune: Bool = true,
-		on db: Database
-	) async throws -> (Int, Int, Int) {
+    public static func upsert(
+        from cards: [GraphTimeCard],
+        workers: [Worker],
+        prune: Bool = true,
+        on db: Database
+    ) async throws -> (Int, Int, Int) {
         let remoteIDs = Set(cards.map { $0.id })
+        db.logger.info("TimeEntry.upsert cards=\(cards.count) workers=\(workers.count) prune=\(prune)")
         // Map workers by Graph user id (employeeKey holds Graph user id string)
         let workersByGraphId = Dictionary(uniqueKeysWithValues: workers.map { ($0.employeeKey.lowercased(), $0) })
 
@@ -23,15 +24,29 @@ extension TimeEntry {
 		var inserted = 0
 		var deleted = 0
 
-		let allDBEntries = try await TimeEntry.query(on: db).with(\.$breaks).all()
-			.reduce(into: [:]) { partial, entry in
-				partial[entry.graphID] = entry
-			}
+        var allDBEntries = try await TimeEntry.query(on: db).with(\.$breaks).all()
+            .reduce(into: [:]) { partial, entry in
+                partial[entry.graphID] = entry
+            }
 
         // Upsert entries and reconcile breaks
+        var matched = 0
         for card in cards {
             let graphUserId = card.userId.uuidString.lowercased()
-            guard let worker = workersByGraphId[graphUserId], let end = card.clockOutEvent?.dateTime else { continue }
+            var worker: Worker
+            if let w = workersByGraphId[graphUserId] {
+                worker = w
+            } else {
+                db.logger.debug("No worker match for userId=\(graphUserId); creating placeholder worker")
+                let newWorker = Worker(employeeKey: graphUserId, fullName: graphUserId)
+                try await newWorker.create(on: db)
+                worker = newWorker
+            }
+            guard let end = card.clockOutEvent?.dateTime else {
+                db.logger.debug("No clockOut for time card id=\(card.id), skipping")
+                continue
+            }
+            matched += 1
 
 			if let entry = allDBEntries[card.id] {
 				/// Update fields if changed
@@ -79,8 +94,10 @@ extension TimeEntry {
                     startAt: card.clockInEvent.dateTime,
                     endAt: end
                 )
-				try await entry.save(on: db)
-				inserted += 1
+                try await entry.save(on: db)
+                inserted += 1
+                // Track newly created entry to avoid duplicate inserts on duplicate cards
+                allDBEntries[card.id] = entry
 
                 if let breaks = card.breaks {
                     try await breaks.map { b in
@@ -94,19 +111,22 @@ extension TimeEntry {
                     }.create(on: db)
                 }
 			}
-		}
+        }
 
-		// Prune entries not present remotely within the provided window
-		guard prune else { return (updated, inserted, deleted) }
+        db.logger.info("TimeEntry.upsert matched=\(matched) updated=\(updated) inserted=\(inserted) so far")
 
-		let toDelete = allDBEntries.values.filter { !remoteIDs.contains($0.graphID) }
-		deleted = toDelete.count
+        // Prune entries not present remotely within the provided window
+        guard prune else { return (updated, inserted, deleted) }
+
+        let toDelete = allDBEntries.values.filter { !remoteIDs.contains($0.graphID) }
+        deleted = toDelete.count
 
 		for entry in toDelete {
 			try await entry.$breaks.query(on: db).delete()
 			try await entry.delete(on: db)
 		}
 
-		return (updated, inserted, deleted)
-	}
+        db.logger.info("TimeEntry.upsert completed updated=\(updated) inserted=\(inserted) deleted=\(deleted)")
+        return (updated, inserted, deleted)
+    }
 }

@@ -16,6 +16,7 @@ struct LAB7: AsyncMigration {
 			.id()
 			.field("employee_key", .string, .required)
 			.field("full_name", .string, .required)
+			.field("email", .string)
 			.field("team", .string)
 			.field("role", .string)
 			.field("archived_at", .datetime)
@@ -68,6 +69,7 @@ struct LAB7: AsyncMigration {
 			.id()
 			.field("worker_id", .uuid, .required, .references("workers", "id"))
 			.field("graph_id", .string, .required)
+			.field("name", .string)
 			.field("date", .date, .required)
 			.field("start_at", .datetime, .required)
 			.field("end_at", .datetime, .required)
@@ -91,6 +93,10 @@ struct LAB7: AsyncMigration {
 		if let sql = database as? SQLDatabase {
 			try? await sql.raw("CREATE INDEX IF NOT EXISTS workers_employee_key_idx ON workers (employee_key);").run()
 			try? await sql.raw("CREATE INDEX IF NOT EXISTS workers_full_name_idx ON workers (full_name);").run()
+
+			// Ensure columns exist when migrating on pre-existing databases
+			try? await sql.raw("ALTER TABLE planned_shifts ADD COLUMN IF NOT EXISTS name TEXT;").run()
+			try? await sql.raw("ALTER TABLE workers ADD COLUMN IF NOT EXISTS email TEXT;").run()
 
 			try? await sql.raw("CREATE INDEX IF NOT EXISTS time_entries_worker_id_idx ON time_entries (worker_id);").run()
 			try? await sql.raw("CREATE INDEX IF NOT EXISTS time_entries_date_idx ON time_entries (date);").run()

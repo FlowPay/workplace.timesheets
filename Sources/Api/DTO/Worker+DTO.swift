@@ -30,6 +30,7 @@ extension Worker {
         var id: UUID
         var employeeKey: String
         var fullName: String
+        var email: String?
         var team: String?
         var role: String?
         var archivedAt: Date?
@@ -43,6 +44,7 @@ extension Worker {
             self.id = id
             self.employeeKey = worker.employeeKey
             self.fullName = worker.fullName
+            self.email = worker.email
             self.team = worker.team
             self.role = worker.role
             self.archivedAt = worker.archivedAt

@@ -26,11 +26,11 @@ public protocol MicrosoftGraphClientProtocol {
 	/// Retrieves all users in the tenant.
 	func listUsers(client: Client) async throws -> [GraphUser]
 	/// Retrieves shifts for a specific team (optionally for a time window).
-	func listShifts(teamId: UUID, from: Date?, to: Date?, client: Client) async throws -> [GraphShift]
+    func listShifts(teamId: UUID, from: Date?, to: Date?, top: Int? , client: Client) async throws -> [GraphShift]
 	/// Retrieves time cards for a specific team (optionally for a time window).
-	func listTimeCards(teamId: UUID, from: Date?, to: Date?, client: Client) async throws -> [GraphTimeCard]
+    func listTimeCards(teamId: UUID, from: Date?, to: Date?, top: Int?, client: Client) async throws -> [GraphTimeCard]
 	/// Retrieves time off requests for a specific team (optionally for a time window).
-	func listTimeOffRequests(teamId: UUID, from: Date?, to: Date?, client: Client) async throws -> [GraphTimeOff]
+    func listTimeOffRequests(teamId: UUID, from: Date?, to: Date?, top: Int?, client: Client) async throws -> [GraphTimeOff]
 	/// Retrieves time off reasons for a specific team.
 	func listTimeOffReasons(teamId: UUID, client: Client) async throws -> [GraphTimeOffReason]
 }
@@ -75,7 +75,29 @@ public struct MicrosoftGraphClient: MicrosoftGraphClientProtocol {
 					"Graph request failed with status \(response.status.code)\nResponse: \(response.body?.getString(at: 0, length: response.body?.readableBytes ?? 0) ?? "<empty>")\nRequest: \(request)"
 			)
 		}
-		return try response.content.decode(T.self)
+
+		// Decode with ISO8601 dates including fractional seconds (Graph returns 2022-09-21T12:52:21.927Z)
+		var buffer = response.body ?? .init()
+		let readable = buffer.readableBytes
+		let data = buffer.readData(length: readable) ?? Data()
+		let decoder = JSONDecoder()
+		let iso = ISO8601DateFormatter()
+		iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+		decoder.dateDecodingStrategy = .custom { decoder in
+			let container = try decoder.singleValueContainer()
+			let str = try container.decode(String.self)
+			if let d = iso.date(from: str) {
+				return d
+			}
+			// Fallback: try without fractional seconds
+			let isoNoFrac = ISO8601DateFormatter()
+			isoNoFrac.formatOptions = [.withInternetDateTime]
+			if let d2 = isoNoFrac.date(from: str) {
+				return d2
+			}
+			throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid ISO8601 date: \(str)")
+		}
+		return try decoder.decode(T.self, from: data)
 	}
 
 	/// Performs a paged GET across Graph list responses supporting `@odata.nextLink`.
@@ -83,6 +105,7 @@ public struct MicrosoftGraphClient: MicrosoftGraphClientProtocol {
 		var results: [T] = []
 		var nextURL: String? = "\(baseURL)\(path)"
 		while let url = nextURL {
+			// Trace the page fetch to aid debugging
 			let page: GraphPagedListWrapper<T> = try await getAbsolute(url, client: client, as: GraphPagedListWrapper<T>.self)
 			results.append(contentsOf: page.value)
 			// Debug pagination trace
@@ -115,12 +138,12 @@ public struct MicrosoftGraphClient: MicrosoftGraphClientProtocol {
 	}
 
 	/// Returns the list of shifts for a team.
-	public func listShifts(teamId: UUID, from: Date?, to: Date?, client: Client) async throws -> [GraphShift] {
+    public func listShifts(teamId: UUID, from: Date?, to: Date?, top: Int? = nil, client: Client) async throws -> [GraphShift] {
 
 		// let queryDateString = queryDateString(start: from, end: to)
 
-		let uri =
-			"/teams/\(teamId.uuidString.lowercased())/schedule/shifts"
+        var uri = "/teams/\(teamId.uuidString.lowercased())/schedule/shifts"
+        if let top { uri += "?$top=\(top)" }
 		// + "?$filter=userId ne null"
 		// + (queryDateString != nil ? " and \(queryDateString!)" : "")
 
@@ -129,12 +152,12 @@ public struct MicrosoftGraphClient: MicrosoftGraphClientProtocol {
 	}
 
 	/// Returns the list of time cards for a team.
-	public func listTimeCards(teamId: UUID, from: Date?, to: Date?, client: Client) async throws -> [GraphTimeCard] {
+    public func listTimeCards(teamId: UUID, from: Date?, to: Date?, top: Int? = nil, client: Client) async throws -> [GraphTimeCard] {
 
 		// let queryDateString = queryDateString(start: from, end: to)
 
-		let uri =
-			"/teams/\(teamId.uuidString.lowercased())/schedule/timeCards"
+        var uri = "/teams/\(teamId.uuidString.lowercased())/schedule/timeCards"
+        if let top { uri += "?$top=\(top)" }
 		// + "?$filter=userId ne null"
 		// + (queryDateString != nil ? " and \(queryDateString!)" : "")
 
@@ -143,12 +166,12 @@ public struct MicrosoftGraphClient: MicrosoftGraphClientProtocol {
 	}
 
 	/// Returns the list of time off requests for a team.
-	public func listTimeOffRequests(teamId: UUID, from: Date?, to: Date?, client: Client) async throws -> [GraphTimeOff] {
+    public func listTimeOffRequests(teamId: UUID, from: Date?, to: Date?, top: Int? = nil, client: Client) async throws -> [GraphTimeOff] {
 
 		// let queryDateString = queryDateString(start: from, end: to)
 
-		let uri =
-			"/teams/\(teamId.uuidString.lowercased())/schedule/timeOffRequests"
+        var uri = "/teams/\(teamId.uuidString.lowercased())/schedule/timeOffRequests"
+        if let top { uri += "?$top=\(top)" }
 		// + "?$filter=userId ne null"
 		// + (queryDateString != nil ? " and \(queryDateString!)" : "")
 
